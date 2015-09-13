@@ -9,13 +9,11 @@ public class MultiClient
 {
     public static void main(String[] args) //throws Exception
     {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("请输入客户端名称");
-        String ClientName = scanner.next();
+    	System.out.println("client starts");
         try {
             Socket socket = new Socket("127.0.0.1",4444);
-            Thread read = new ReadThread(socket,ClientName);
-            Thread write = new WriteThread(socket,ClientName);
+            Thread read = new ReadThread(socket,"test");
+            Thread write = new WriteThread(socket,"test");
             read.start();
             write.start();
         } catch (Exception e) {
