@@ -13,7 +13,7 @@ public class MultiClient
         System.out.println("请输入客户端名称");
         String ClientName = scanner.next();
         try {
-            Socket socket = new Socket("127.0.0.1",5200);
+            Socket socket = new Socket("127.0.0.1",4444);
             Thread read = new ReadThread(socket,ClientName);
             Thread write = new WriteThread(socket,ClientName);
             read.start();

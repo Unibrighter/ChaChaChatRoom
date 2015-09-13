@@ -16,7 +16,7 @@ public class MultiServer
     public MultiServer()
     {
         try {
-            serverSocket = new ServerSocket(5200);
+            serverSocket = new ServerSocket(4444);
             System.out.println("服务端启动");
             ServerWriteThread write = new ServerWriteThread(vector);    //向所有客户端发送同一消息
             write.start();
