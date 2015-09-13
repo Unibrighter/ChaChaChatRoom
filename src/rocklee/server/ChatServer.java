@@ -5,8 +5,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
 
+import org.apache.log4j.Logger;
+
 public class ChatServer
 {
+	
+	// for debug and info, since log4j is thread safe, it can also be used to
+	// record the result and output
+	private static Logger log = Logger.getLogger(ChatServer.class);
+	
 	private ServerSocket serverSocket = null;
 	private ChatRoomManager main_hall = null;
 	private Vector<ChatRoomManager> room_list = null;
@@ -24,11 +31,6 @@ public class ChatServer
 	public ChatServer(int port_num)
 	{
 		this.port_num = port_num;
-		this.initialize();
-	}
-
-	public void initialize()
-	{
 		this.tmp_guest_number=0;
 		
 		try
@@ -39,7 +41,7 @@ public class ChatServer
 		{
 			e.printStackTrace();
 		}
-		System.out.println("Server has been initialized!!!!");
+		log.debug("Server has been initialized!!!!");
 		
 		//set up the main hall,owner is empty
 		main_hall=new ChatRoomManager(MAIN_HALL_NAME, "");
@@ -50,8 +52,8 @@ public class ChatServer
 		//add it to the chat room list
 		this.room_list.add(main_hall);
 	}
-	
-	
+
+
 	
 	public void startService()
 	{
@@ -79,7 +81,10 @@ public class ChatServer
 		}
 	}
 	
-	
+	public boolean addNewChatRoom()
+	{
+		
+	}
 	
 	
 	public static void main(String[] args)

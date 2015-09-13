@@ -75,3 +75,20 @@ for more information.
 1. 如果使用String传输,比较容易添加"\n"换行符作为结尾,这样能够更好的对TCP/IP流进行以行的形式进行读取
 2. String形成json再来获取变量也很方便,直接传输JsonObject反而违反了json简单快捷,能够用String表达的初衷.json的设计本来就是让其以文本的形式表现一个Object
 
+=============================================
+现在又有另一个问题:
+实际响应由客户端发出包含命令的json请求时,
+比如一个**"新建一个聊天室"**这个命令,
+这个添加一个新的ChatRoomManager到ChatServer的Vector中的这一部分代码应该放在哪一个部分中?
+
+在ClientWrap中?
+还是ChatServer中?
+似乎都不太合适
+
+另外,操作的句柄应该是什么?
+
+------------
+以上的问题,我现在还只能思考到一个耦合度非常高(所以说比较糟糕)的方案,
+
+ServerHandler中设置全局的ChatServer作为句柄.
+将每一个命令都是为ChatSever和ClientWrap之间的互动
