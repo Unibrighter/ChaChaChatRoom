@@ -67,3 +67,11 @@ for more information.
 然后私有属性中添加ChatRoomManager中对整个list的引用(更确切的说是指这个广播频道)
 将其视作一个必须被同步控制的变量.
 
+
+=============================================
+虽然simple json是支持序列化的(也即其能够通过使用ObjectStream进行传输)
+但是我还是决定使用String来进行传输
+原因有两点:
+1. 如果使用String传输,比较容易添加"\n"换行符作为结尾,这样能够更好的对TCP/IP流进行以行的形式进行读取
+2. String形成json再来获取变量也很方便,直接传输JsonObject反而违反了json简单快捷,能够用String表达的初衷.json的设计本来就是让其以文本的形式表现一个Object
+

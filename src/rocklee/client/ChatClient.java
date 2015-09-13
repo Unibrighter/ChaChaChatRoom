@@ -1,10 +1,7 @@
 package rocklee.client;
 import java.net.Socket;
 
-import rocklee.thread.ReadThread;
-import rocklee.thread.WriteThread;
-
-public class MultiClient 
+public class ChatClient 
 {
     public static void main(String[] args) //throws Exception
     {
@@ -16,7 +13,7 @@ public class MultiClient
             read.start();
             write.start();
         } catch (Exception e) {
-            System.out.println("Error :" + e);
+			e.printStackTrace();
         }
     }
 }
