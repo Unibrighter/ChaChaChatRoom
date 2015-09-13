@@ -1,6 +1,5 @@
 package rocklee.client;
 import java.net.Socket;
-import java.util.Scanner;
 
 import rocklee.thread.ReadThread;
 import rocklee.thread.WriteThread;
