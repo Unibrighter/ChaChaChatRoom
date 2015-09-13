@@ -7,6 +7,7 @@ import java.util.Vector;
 
 public class ServerWriteThread  extends Thread
 {
+	// TODO going to be abandoned
     Vector<Socket> vector = null;
     Vector<PrintWriter> oosVector = null;
     public ServerWriteThread(Vector<Socket> vector)

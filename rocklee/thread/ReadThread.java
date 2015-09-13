@@ -6,6 +6,8 @@ import java.net.Socket;
 
 public class ReadThread extends Thread
 {
+	
+	//going to be abandoned
 	Socket socket = null;
 	String client = null;
 

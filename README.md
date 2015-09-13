@@ -44,3 +44,26 @@ for more information.
 个人认为可以综合上面的考虑
 每一个ChatRoomManager内部有一个线程池(不好,因为涉及到聊天室转换的时候,调度容易出差错)
 每一个ChatRoomManager只是针对一个Socket Connecttion 初始化得到的Thread进行管理,这样维护的是独立的ClientThread,ClientThread可以自由添加
+
+
+============================================
+对于ServerMain,肯定有一部分的方法是synchronized的
+比如setupChatRoom等方法等
+
+
+
+对于ChatRoomManager
+现在的思路是:
+一个Vector<ClientWrap>
+
+一个线程while(true)
+不断从各个的ClientWrap中吮吸msg
+然后发出去
+
+但是这又引出了另外一个问题:
+**当一个inputStream的readLine方法阻塞了以后那么while循环就卡住了,怎么解决?**
+
+暂时想到的一个比较糟糕的解决办法是,将Client设置为一个Runnable的实例
+然后私有属性中添加ChatRoomManager中对整个list的引用(更确切的说是指这个广播频道)
+将其视作一个必须被同步控制的变量.
+

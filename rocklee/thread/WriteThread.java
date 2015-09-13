@@ -6,6 +6,8 @@ import java.util.Scanner;
 
 public class WriteThread extends Thread
 {
+	//going to be abandoned
+	
 	Socket socket = null;
 	String client = null;
 

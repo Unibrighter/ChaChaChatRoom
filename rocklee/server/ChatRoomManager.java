@@ -22,7 +22,7 @@ public class ChatRoomManager
 	
 	public ChatRoomManager()
 	{
-		// TODO Auto-generated constructor stub
+		
 	}
 	
 }
