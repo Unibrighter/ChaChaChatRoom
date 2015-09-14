@@ -25,19 +25,19 @@ public class ChatRoomManager
 	private static Logger log = Logger.getLogger(ChatRoomManager.class);
 
 	private String room_id = null;
-	private String room_owner = null;
+	private ClientWrap room_owner = null;
 
 	// the collection of the clients in this chat room
-	private Vector<ClientWrap> client_vector = null;
+	private Vector<ClientWrap> client_list = null;
 
-	public ChatRoomManager(String id, String owner)
+	public ChatRoomManager(String id, ClientWrap owner)
 	{
 
 		this.room_id = id;
 		this.room_owner = owner;
-		client_vector = new Vector<ClientWrap>();
+		client_list = new Vector<ClientWrap>();
 		log.debug("New Chat Room Established!! roomid: " + id + "\townerid:"
-				+ owner);
+				+ owner.getIdentity());
 	}
 
 	// this method needs to be set as synchronized so that the case two thread
@@ -45,9 +45,9 @@ public class ChatRoomManager
 	public synchronized void broadCastMessage(String msg)
 	{
 		// for each print writer in each client wrap, print this message
-		for (int i = 0; i < client_vector.size(); i++)
+		for (int i = 0; i < client_list.size(); i++)
 		{
-			client_vector.get(i).sendNextMessage(msg);
+			client_list.get(i).sendNextMessage(msg);
 		}
 	}
 
@@ -56,7 +56,7 @@ public class ChatRoomManager
 		if (client == null)
 			return false;
 
-		return this.client_vector.add(client);
+		return this.client_list.add(client);
 	}
 
 	/**
@@ -65,7 +65,7 @@ public class ChatRoomManager
 	 */
 	public synchronized boolean removeClient(ClientWrap client)
 	{
-		return this.client_vector.remove(client);
+		return this.client_list.remove(client);
 
 	}
 
@@ -73,7 +73,7 @@ public class ChatRoomManager
 	public boolean contains(String client_identity)
 	{
 		ClientWrap dummy = new ClientWrap(null, client_identity);
-		return this.client_vector.contains(dummy);
+		return this.client_list.contains(dummy);
 	}
 
 	public String getRoomId()
@@ -81,8 +81,24 @@ public class ChatRoomManager
 		return this.room_id;
 	}
 
+	// if there is no client who takes charge of this room ,then return ""
+	// indicating that there is no owner
 	public String getRoomOwner()
 	{
-		return this.room_owner;
+		return this.room_owner == null ? "" : this.room_owner.getIdentity();
 	}
+
+	// return the collection of room member ,including the room owner
+	public Vector<String> getRoomMembers()
+	{
+		Vector<String> result=new Vector<String>();
+		
+		for (int i = 0; i < this.client_list.size(); i++)
+		{
+			result.add(this.client_list.get(i).getIdentity());
+		}
+		return result.isEmpty()?null:result;
+	}
+	
+	
 }

@@ -92,3 +92,7 @@ for more information.
 
 ServerHandler中设置全局的ChatServer作为句柄.
 将每一个命令都是为ChatSever和ClientWrap之间的互动
+
+=============================================
+
+最后的决定是,将ServerHandler中的所有方法全部放入ClientWrap中,以client调用自己自身的方法的形式来实现和服务器的对话!
