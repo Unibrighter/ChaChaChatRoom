@@ -23,10 +23,18 @@ public class ChatClient
 	public static final String TYPE_DELETE = "delete";
 	public static final String TYPE_MESSAGE = "message";
 	public static final String TYPE_QUIT = "quit";
-	
+
+	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
+	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
+
+	// this records the temporary request new room id to check whether the room
+	// creation succeeds or not
+	private String request_new_room_id = null;
+
 	private boolean online = true;
 
 	private String client_identity = null;
+	private String room_id = null;
 
 	private Socket socket = null;
 	private int port_num = -1;
@@ -48,7 +56,6 @@ public class ChatClient
 		}
 	}
 
-
 	public void startChat()
 	{
 		this.read.start();
@@ -59,12 +66,12 @@ public class ChatClient
 	{
 		this.online = online;
 	}
-	
+
 	public boolean isOnline()
 	{
 		return this.online;
 	}
-	
+
 	public String getIdentity()
 	{
 		return this.client_identity;
@@ -73,6 +80,26 @@ public class ChatClient
 	public void setIdentity(String identity)
 	{
 		this.client_identity = identity;
+	}
+
+	public String getRoomId()
+	{
+		return this.room_id;
+	}
+
+	public void setRoomId(String room_id)
+	{
+		this.room_id = room_id;
+	}
+
+	public void setRequestNewRoomId(String room_id)
+	{
+		this.request_new_room_id = room_id;
+	}
+
+	public String getRequestNewRoomId()
+	{
+		return this.request_new_room_id;
 	}
 
 	public static void main(String[] args)

@@ -3,6 +3,7 @@ package rocklee.client;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
@@ -32,6 +33,13 @@ public class WriteThread extends Thread
 
 	}
 
+	public String getPrefix()
+	{
+		String prefix="["+this.chat_client.getRoomId()+"] "+this.chat_client.getIdentity()+">";
+		return prefix;
+	}
+
+	
 	public void run()
 	{
 		try
@@ -42,6 +50,10 @@ public class WriteThread extends Thread
 			while (this.chat_client.isOnline() && readline != null)
 			{
 				this.handInput(readline);
+				
+				//TODO how to make sure that this prefix always show itself at the buttom line before input?
+				System.out.print(this.getPrefix());
+				
 				readline = scanner.nextLine();
 			}
 			os.close();
@@ -73,60 +85,108 @@ public class WriteThread extends Thread
 
 	private void handleCommand(String raw_command)
 	{// join, identitychange, who and quit
-		
-		String args[]=raw_command.split(" ");
-		
-		JSONObject command_json=new JSONObject();
-		
-		if(args[0].equals(ChatClient.TYPE_INDENTITY_CHANGE))
+
+		String args[] = raw_command.split(" ");
+
+		JSONObject command_json = new JSONObject();
+
+		if (args[0].equals(ChatClient.TYPE_INDENTITY_CHANGE))
 		{
 			command_json.put("type", ChatClient.TYPE_INDENTITY_CHANGE);
-			
-			if(args.length<2)
+
+			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
 			}
-			
+
+			if (!this.validIdentity(args[1]))
+			{
+				System.out.println("Identity " + args[1]
+						+ " is invalid or already in use.");
+				return;
+			}
+
 			command_json.put("identity", args[1]);
-			
+
 			this.sendNextJson(command_json);
-			
+			return;
 		}
-		
-		if(args[0].equals(ChatClient.TYPE_JOIN))
+
+		if (args[0].equals(ChatClient.TYPE_JOIN))
 		{
 			command_json.put("type", ChatClient.TYPE_JOIN);
-			
-			if(args.length<2)
+
+			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
 			}
-			
+
 			command_json.put("roomid", args[1]);
-			
+
 			this.sendNextJson(command_json);
+			return;
 		}
-		
-		if(args[0].equals(ChatClient.TYPE_WHO))
+
+		if (args[0].equals(ChatClient.TYPE_WHO))
 		{
 			command_json.put("type", ChatClient.TYPE_WHO);
-			
-			if(args.length<2)
+
+			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
 			}
-			
+
 			command_json.put("roomid", args[1]);
-			
+
 			this.sendNextJson(command_json);
+			return;
 		}
-		
-		if(args[0].equals(ChatClient.TYPE_QUIT))
+
+		if (args[0].equals(ChatClient.TYPE_CREATE_ROOM))
+		{
+			command_json.put("type", ChatClient.TYPE_CREATE_ROOM);
+
+			if (args.length < 2)
+			{
+				log.debug("not enough parameters are given! plz Check input format!");
+			}
+
+			if (!this.validRoomId(args[1]))
+			{
+				System.out.println("Room " + args[1]
+						+ " is invalid or already in use.");
+				return;
+			}
+
+			command_json.put("roomid", args[1]);
+			this.chat_client.setRequestNewRoomId(args[1]);
+
+			this.sendNextJson(command_json);
+			return;
+		}
+
+		if (args[0].equals(ChatClient.TYPE_LIST))
+		{
+			command_json.put("type", ChatClient.TYPE_LIST);
+			this.sendNextJson(command_json);
+			return;
+		}
+
+		if (args[0].equals(ChatClient.TYPE_CREATE_ROOM))
+		{
+			command_json.put("type", ChatClient.TYPE_CREATE_ROOM);
+			this.sendNextJson(command_json);
+			return;
+		}
+
+		if (args[0].equals(ChatClient.TYPE_QUIT))
 		{
 			command_json.put("type", ChatClient.TYPE_QUIT);
-			this.sendNextJson(command_json);//it needs a recognition from server to disconnect
+			this.sendNextJson(command_json);// it needs a recognition from
+											// server to disconnect
+			return;
 		}
-		
+
 		log.debug("No command match found!!! check the command input!");
 	}
 
@@ -144,6 +204,16 @@ public class WriteThread extends Thread
 	{
 		this.os.println(json_obj.toJSONString());
 		this.os.flush();
+	}
+
+	private boolean validIdentity(String identity)
+	{
+		return Pattern.matches(ChatClient.VALID_IDENTITY_REX, identity);
+	}
+
+	private boolean validRoomId(String room_id)
+	{
+		return Pattern.matches(ChatClient.VALID_ROOM_ID_REX, room_id);
 	}
 
 }

@@ -46,6 +46,9 @@ public class ClientWrap extends Thread
 	public static final String TYPE_MESSAGE = "message";
 	public static final String TYPE_QUIT = "quit";
 
+	public static final String VALID_IDENTITY_REX="^[a-zA-Z][a-zA-Z0-9]{2,15}";
+	public static final String VALID_ROOM_ID_REX="^[a-zA-Z][a-zA-Z0-9]{2,31}";
+	
 	private String indentity = null;// user's identity
 
 	private ChatRoomManager chat_room_manager = null;
