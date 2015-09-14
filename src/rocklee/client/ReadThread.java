@@ -2,7 +2,12 @@ package rocklee.client;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Scanner;
+
+import org.apache.log4j.Logger;
+import org.json.simple.parser.JSONParser;
 
 /**
  * This thread get the input from the socket, analyze it , and then gives proper
@@ -14,16 +19,24 @@ import java.net.Socket;
 
 public class ReadThread extends Thread
 {
+	
+	
+	// for debug and info, since log4j is thread safe, it can also be used to
+	// record the result and output
+	private static Logger log = Logger.getLogger(ReadThread.class);
 
 	private Socket socket = null;
 	private ChatClient chat_client = null;
 
+	private BufferedReader is =null;
+	private JSONParser json_parser=null;
 
 
 	public ReadThread(Socket socket, ChatClient client)
 	{
 		this.socket = socket;
 		this.chat_client = client;
+		this.json_parser=new JSONParser();
 	}
 
 	public void run()

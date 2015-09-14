@@ -107,5 +107,9 @@ public class ChatRoomManager
 		return result.isEmpty()?null:result;
 	}
 	
+	public int getGuestNum()
+	{
+		return this.client_list.size();
+	}
 	
 }

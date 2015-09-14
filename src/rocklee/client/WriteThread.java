@@ -41,8 +41,7 @@ public class WriteThread extends Thread
 			String readline = scanner.nextLine();
 			while (this.chat_client.isOnline() && readline != null)
 			{
-				os.println(readline);
-				os.flush();
+				this.handInput(readline);
 				readline = scanner.nextLine();
 			}
 			os.close();
@@ -85,7 +84,7 @@ public class WriteThread extends Thread
 			
 			if(args.length<2)
 			{
-				log.debug("not enough parameters are given! plz input a new identity!");
+				log.debug("not enough parameters are given! plz Check input format!");
 			}
 			
 			command_json.put("identity", args[1]);
@@ -96,17 +95,36 @@ public class WriteThread extends Thread
 		
 		if(args[0].equals(ChatClient.TYPE_JOIN))
 		{
+			command_json.put("type", ChatClient.TYPE_JOIN);
 			
+			if(args.length<2)
+			{
+				log.debug("not enough parameters are given! plz Check input format!");
+			}
+			
+			command_json.put("roomid", args[1]);
+			
+			this.sendNextJson(command_json);
 		}
 		
 		if(args[0].equals(ChatClient.TYPE_WHO))
 		{
+			command_json.put("type", ChatClient.TYPE_WHO);
 			
+			if(args.length<2)
+			{
+				log.debug("not enough parameters are given! plz Check input format!");
+			}
+			
+			command_json.put("roomid", args[1]);
+			
+			this.sendNextJson(command_json);
 		}
 		
 		if(args[0].equals(ChatClient.TYPE_QUIT))
 		{
-			
+			command_json.put("type", ChatClient.TYPE_QUIT);
+			this.sendNextJson(command_json);//it needs a recognition from server to disconnect
 		}
 		
 		log.debug("No command match found!!! check the command input!");
