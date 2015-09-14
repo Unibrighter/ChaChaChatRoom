@@ -9,11 +9,10 @@ import java.net.SocketException;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
+import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import rocklee.handler.ServerHandler;
 
 /**
  * This class is the wrap for the connection of a single client , and includes
@@ -27,6 +26,11 @@ import rocklee.handler.ServerHandler;
 
 public class ClientWrap extends Thread
 {
+	// for debug and info, since log4j is thread safe, it can also be used to
+	// record the result and output
+	private static Logger log = Logger.getLogger(ClientWrap.class);
+	
+	
 	private static JSONParser json_parser = new JSONParser();
 	public static final String TYPE_NEW_IDENTITY = "newidentity";
 	public static final String TYPE_INDENTITY_CHANGE = "identitychange";
@@ -121,6 +125,18 @@ public class ClientWrap extends Thread
 	{
 		try
 		{
+			
+			Vector<ChatRoomManager> room_list=this.chat_server.getChatRoomList();
+			
+			//reset the chat rooms which belonged to this owner
+			for (int i = 0; i < room_list.size(); i++)
+			{
+				if(room_list.get(i).getRoomOwner().equals(this.getIdentity()))
+					room_list.get(i).setRoomOwner(null);
+			}
+			
+			this.chat_room_manager.removeClient(this);
+						
 			this.input.close();
 			this.output.close();
 			this.socket.close();
@@ -142,6 +158,11 @@ public class ClientWrap extends Thread
 	{
 		String former_id=this.indentity;
 		this.indentity = indentity;
+		
+		if (former_id==null||former_id.equals(""))
+		{
+			return;
+		}
 		
 		// check if it's a "guest name"
 		if (Pattern.matches("^guest[1-9]\\d*$", former_id))
@@ -220,11 +241,14 @@ public class ClientWrap extends Thread
 
 			}
 
-		} catch (SocketException e)
-		{
-			// TODO ,tcp connection is forced to terminate
-			// do sth to deal with the situation
-		} catch (IOException e)
+		} 
+//		catch (SocketException e)
+//		{
+//			log.debug("TCP connection is forced to terminate");
+//			this.disonnect();
+//		} 
+		
+		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -275,7 +299,10 @@ public class ClientWrap extends Thread
 		}
 
 		
-		
+		if (request_type.equals(ClientWrap.TYPE_MESSAGE))
+		{
+			
+		}
 		
 		// TODO other response if and method
 	}

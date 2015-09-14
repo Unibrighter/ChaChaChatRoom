@@ -8,8 +8,6 @@ import java.util.Vector;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 
-import rocklee.handler.ServerHandler;
-
 public class ChatServer
 {
 
@@ -28,7 +26,6 @@ public class ChatServer
 
 	// this is used to keep track of the next minimum possible index number
 	private volatile boolean[] guest_name_flag = null;
-
 
 
 	private boolean listenning = true;
@@ -121,6 +118,10 @@ public class ChatServer
 		return this.room_list.add(tmp);
 	}
 
+	public Vector<ChatRoomManager> getChatRoomList()
+	{
+		return this.room_list;
+	}
 	public void broadcastToAll(String msg)
 	{
 		// broad cast to all chat room channels ,one by one

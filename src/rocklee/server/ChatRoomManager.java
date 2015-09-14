@@ -37,7 +37,7 @@ public class ChatRoomManager
 		this.room_owner = owner;
 		client_list = new Vector<ClientWrap>();
 		log.debug("New Chat Room Established!! roomid: " + id + "\townerid:"
-				+ owner.getIdentity());
+				+ (owner!=null?owner.getIdentity():""));
 	}
 
 	// this method needs to be set as synchronized so that the case two thread
@@ -65,6 +65,7 @@ public class ChatRoomManager
 	 */
 	public synchronized boolean removeClient(ClientWrap client)
 	{
+		
 		return this.client_list.remove(client);
 
 	}
@@ -88,6 +89,12 @@ public class ChatRoomManager
 		return this.room_owner == null ? "" : this.room_owner.getIdentity();
 	}
 
+	public void setRoomOwner(ClientWrap client)
+	{
+		this.room_owner=client;
+	}
+	
+	
 	// return the collection of room member ,including the room owner
 	public Vector<String> getRoomMembers()
 	{
