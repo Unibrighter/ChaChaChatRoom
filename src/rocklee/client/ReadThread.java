@@ -40,7 +40,6 @@ public class ReadThread extends Thread
 		this.chat_client = client;
 		this.json_parser = new JSONParser();
 	}
-	
 
 	public void run()
 	{
@@ -53,11 +52,10 @@ public class ReadThread extends Thread
 			line = is.readLine();
 			while (this.chat_client.isOnline() && line != null)
 			{
-				
-				// System.out.println(chat_client.getIdentity() + " : " + line);
+
 				this.handleResponse(line);
 				line = is.readLine();
-				
+
 			}
 
 			is.close();
@@ -75,7 +73,7 @@ public class ReadThread extends Thread
 		try
 		{
 			response_json = (JSONObject) json_parser.parse(raw_input);
-			System.out.println(response_json);
+			log.debug(response_json);
 		} catch (ParseException e)
 		{
 			e.printStackTrace();
@@ -94,7 +92,9 @@ public class ReadThread extends Thread
 				// first welcome message from server, get the new name from
 				// server as
 				// guest#
+				log.debug("Connected to localhost as " + identity);
 				System.out.println("Connected to localhost as " + identity);
+				return;
 			}
 
 			else
@@ -102,11 +102,14 @@ public class ReadThread extends Thread
 				if (former.equals(identity)
 						&& former.equals(this.chat_client.getIdentity()))
 				{// identity remains the same
-					log.info("Requested identity invalid or in use");
+					log.debug("Requested identity invalid or in use");
+					System.out.println("Requested identity invalid or in use");
 					return;
 				}
-				System.out.println(former + " is now " + identity);
+
 			}
+			log.debug(former + " now is " + identity);
+			System.out.println(former + " now is " + identity);
 			this.chat_client.setIdentity(identity);
 			return;
 		}
@@ -122,7 +125,9 @@ public class ReadThread extends Thread
 					&& room_id.equals("MainHall"))
 			{
 				// just connect to server, move from "nowhere" to main hall
+				log.debug(identity + " moves to MainHall");
 				System.out.println(identity + " moves to MainHall");
+				this.chat_client.setRoomId("MainHall");
 				return;
 			}
 
@@ -130,21 +135,23 @@ public class ReadThread extends Thread
 			{
 				// the destination is empty, indicates that user is going to
 				// disconnect
+				log.debug(identity + " leaves MainHall");
 				System.out.println(identity + " leaves MainHall");
-				System.out.println(response_json);
-				
-				if(this.chat_client.getIdentity().equals(identity))
-				{//this client is going to disconnect itself
+
+				if (this.chat_client.getIdentity().equals(identity))
+				{// this client is going to disconnect itself
 					this.chat_client.setOnline(false);
 				}
-				
+
 				return;
 			}
 
 			if (former.equals(identity)
 					&& former.equals(this.chat_client.getIdentity()))
 			{// room id remains the same
-				log.info("The requested room is invalid or non existent.");
+				log.debug("The requested room is invalid or non existent.");
+				System.out
+						.println("The requested room is invalid or non existent.");
 				return;
 			}
 			System.out.println(identity + " moves from " + former + " to "
@@ -161,17 +168,7 @@ public class ReadThread extends Thread
 			String room_id = (String) response_json.get("roomid");
 			JSONArray identities = (JSONArray) response_json.get("identities");
 			String owner = (String) response_json.get("owner");
-			
-			Boolean success=(Boolean) response_json.get("success");
-			
-			
-			//if request failed,print the failing message
-			if(success==null||!success)
-			{
-				log.info("The requested room is invalid or non existent.");
-				return;
-			}
-			
+
 			String name_list = room_id + " contains";
 			for (int i = 0; i < identities.size(); i++)
 			{
@@ -190,31 +187,29 @@ public class ReadThread extends Thread
 		{
 
 			JSONArray rooms = (JSONArray) response_json.get("rooms");
-			Boolean success = (Boolean) response_json.get("success");
-			// fuck this stupid protocol , i need a indicator to show if the
-			// operation is successful or not
-			if (success == null)
-			{
-				for (int i = 0; i < rooms.size(); i++)
-				{
-					JSONObject room_json_obj = (JSONObject) rooms.get(i);
-					System.out.println((String) room_json_obj.get("roomid")
-							+ ": " + (Long) room_json_obj.get("count"));
-				}
 
-				return;
-			} else
+			String request_room_name = this.chat_client.getRequestNewRoomId();
+			for (int i = 0; i < rooms.size(); i++)
 			{
-				if (success)
+				JSONObject room = (JSONObject) rooms.get(i);
+				if (((String) room.get("roomid")).equals(this.chat_client
+						.getRequestNewRoomId()))
 				{
-					System.out.println("Room "
-							+ this.chat_client.getRequestNewRoomId()
-							+ " created");
+					log.debug("Room " + request_room_name + " created");
+					System.out
+							.println("Room " + request_room_name + " created");
+					this.chat_client.setRequestNewRoomId("");
 					return;
-				} else
-					System.out.println("Room "
-							+ this.chat_client.getRequestNewRoomId()
-							+ " is invalid or already in use.");
+				}
+			}
+
+			if (!(request_room_name == null || request_room_name.equals("")))
+			{
+				log.debug("Room " + this.chat_client.getRequestNewRoomId()
+						+ " is invalid or already in use.");
+				System.out.println("Room "
+						+ this.chat_client.getRequestNewRoomId()
+						+ " is invalid or already in use.");
 				return;
 			}
 
@@ -226,7 +221,7 @@ public class ReadThread extends Thread
 		{
 			String identity = (String) response_json.get("identity");
 			String content = (String) response_json.get("content");
-			System.out.println(identity+": "+content);
+			System.out.println(identity + ": " + content);
 		}
 
 	}

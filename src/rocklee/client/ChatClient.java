@@ -68,11 +68,9 @@ public class ChatClient
 			this.read.join();
 		} catch (InterruptedException e)
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		System.exit(0);
-
 	}
 
 	public void setOnline(boolean online)
@@ -119,19 +117,23 @@ public class ChatClient
 	{
 		// deal with input arguments
 		if (IPAddressUtil.isIPv4LiteralAddress(args[0]))
-			System.err.println("invalid ip address");
-		;
+		{
+			System.err.println("Invalid ip address");
+			System.out.println(-1);
+		}
+
 		int port = 4444;
 		for (int i = 0; i < args.length; i++)
 		{
 			if (args[i].equalsIgnoreCase("-p"))
 			{
-				port = Integer.parseInt(args[i+1]);
+				port = Integer.parseInt(args[i + 1]);
 				break;
 			}
 
 		}
 		ChatClient chat_client = new ChatClient(args[0], port);
 		chat_client.startChat();
+		
 	}
 }

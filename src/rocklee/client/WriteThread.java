@@ -45,19 +45,21 @@ public class WriteThread extends Thread
 	public void run()
 	{
 		try
-		{
+		{	this.sleep(1000);
+			
 			this.os = new PrintWriter(socket.getOutputStream());
 			this.scanner = new Scanner(System.in);
+			
 			String readline = scanner.nextLine();
+			System.out.println();
 			while (this.chat_client.isOnline() && readline != null)
 			{
+				System.out.println(this.getPrefix());
+
 				this.handInput(readline);
 
-				// TODO how to make sure that this prefix always show itself at
-				// the buttom line before input?
-				System.out.print(this.getPrefix());
-
 				readline = scanner.nextLine();
+				System.out.println();
 			}
 			os.close();
 			socket.close();
