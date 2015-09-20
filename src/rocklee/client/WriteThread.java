@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 
+import com.sun.org.apache.bcel.internal.generic.L2D;
+
 /**
  * This thread deals with the user's command or message
  * 
@@ -175,6 +177,64 @@ public class WriteThread extends Thread
 		if (args[0].equals(ChatClient.TYPE_CREATE_ROOM))
 		{
 			command_json.put("type", ChatClient.TYPE_CREATE_ROOM);
+			this.sendNextJson(command_json);
+			return;
+		}
+		
+		if (args[0].equals(ChatClient.TYPE_KICK))
+		{//TODO kick command 
+			if (args.length < 4)
+			{
+				log.debug("not enough parameters are given! plz Check input format!");
+			}
+
+			if (!this.validIdentity(args[1]))
+			{
+				System.out.println("Identity " + args[1]
+						+ " is invalid.");
+				return;
+			}
+			
+			if (!this.validRoomId(args[2]))
+			{
+				System.out.println("RoomId " + args[1]
+						+ " is invalid.");
+				return;
+			}
+			
+			if (!this.validRoomId(args[3]))
+			{
+				System.out.println("RoomId " + args[1]
+						+ " is invalid.");
+				return;
+			}
+			
+			
+			command_json.put("type", ChatClient.TYPE_KICK);
+			command_json.put("identity", args[1]);
+			command_json.put("roomid", args[2]);
+			command_json.put("time", new Long(Long.parseLong(args[3])));
+			
+			this.sendNextJson(command_json);
+			return;
+		}
+		
+		if (args[0].equals(ChatClient.TYPE_DELETE))
+		{
+			if (args.length < 2)
+			{
+				log.debug("not enough parameters are given! plz Check input format!");
+			}
+
+			if (!this.validRoomId(args[1]))
+			{
+				System.out.println("Room " + args[1]
+						+ " is invalid or already in use.");
+				return;
+			}
+
+			command_json.put("roomid", args[1]);
+			command_json.put("type", ChatClient.TYPE_DELETE);
 			this.sendNextJson(command_json);
 			return;
 		}

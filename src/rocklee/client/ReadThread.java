@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
-import javax.xml.ws.Response;
-
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -153,7 +151,17 @@ public class ReadThread extends Thread
 			String room_id = (String) response_json.get("roomid");
 			JSONArray identities = (JSONArray) response_json.get("identities");
 			String owner = (String) response_json.get("owner");
-
+			
+			Boolean success=(Boolean) response_json.get("success");
+			
+			
+			//if request failed,print the failing message
+			if(!success)
+			{
+				System.out.println("The requested room is invalid or non existent.");
+				return;
+			}
+			
 			String name_list = room_id + " contains";
 			for (int i = 0; i < identities.size(); i++)
 			{
@@ -170,8 +178,6 @@ public class ReadThread extends Thread
 		// room list
 		if (type.equals(ChatClient.TYPE_ROOM_LIST))
 		{
-
-			String outputInfo = "";
 
 			JSONArray rooms = (JSONArray) response_json.get("rooms");
 			Boolean success = (Boolean) response_json.get("success");
@@ -201,34 +207,6 @@ public class ReadThread extends Thread
 							+ " is invalid or already in use.");
 				return;
 			}
-
-			// if(this.chat_client.getRequestNewRoomId()==null)
-			// {//no previous request to create a new room has been sent
-			// for (int i = 0; i < rooms.size(); i++)
-			// {
-			// JSONObject room_json_obj = (JSONObject) rooms.get(i);
-			// System.out.println((String)room_json_obj.get("roomid")+": "+(Integer)room_json_obj.get("count"));
-			// }
-			//
-			// return;
-			// }
-			// else
-			// {
-			// for (int i = 0; i < rooms.size(); i++)
-			// {
-			// JSONObject room_json_obj = (JSONObject) rooms.get(i);
-			// if(this.chat_client.getRequestNewRoomId().equals((String)room_json_obj.get("roomid")))
-			// {//request new room is successfully built
-			// System.out.println();
-			// return;
-			// }
-			// }
-			// System.out.println("Room "+this.chat_client.getRequestNewRoomId()+" is invalid or already in use.");
-			// //fuck this protocol ,no indicator given, fuck this
-			//
-			// return;
-			//
-			// }
 
 		}
 

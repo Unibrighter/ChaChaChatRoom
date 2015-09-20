@@ -6,13 +6,18 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+
+import rocklee.client.ChatClient;
 
 /**
  * This class is the wrap for the connection of a single client , and includes
@@ -29,8 +34,7 @@ public class ClientWrap extends Thread
 	// for debug and info, since log4j is thread safe, it can also be used to
 	// record the result and output
 	private static Logger log = Logger.getLogger(ClientWrap.class);
-	
-	
+
 	private static JSONParser json_parser = new JSONParser();
 	public static final String TYPE_NEW_IDENTITY = "newidentity";
 	public static final String TYPE_INDENTITY_CHANGE = "identitychange";
@@ -46,13 +50,13 @@ public class ClientWrap extends Thread
 	public static final String TYPE_MESSAGE = "message";
 	public static final String TYPE_QUIT = "quit";
 
-	public static final String VALID_IDENTITY_REX="^[a-zA-Z][a-zA-Z0-9]{2,15}";
-	public static final String VALID_ROOM_ID_REX="^[a-zA-Z][a-zA-Z0-9]{2,31}";
-	
+	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
+	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
+
 	private String indentity = null;// user's identity
 
 	private ChatRoomManager chat_room_manager = null;
-	private ChatServer chat_server=null;							
+	private ChatServer chat_server = null;
 
 	private Socket socket = null;
 	private BufferedReader input = null;
@@ -90,10 +94,10 @@ public class ClientWrap extends Thread
 	{
 		this.chat_room_manager = chatRommManager;
 	}
-	
+
 	public void setChatSever(ChatServer chat_server)
 	{
-		this.chat_server=chat_server;
+		this.chat_server = chat_server;
 	}
 
 	public String getNextMessage()
@@ -128,18 +132,19 @@ public class ClientWrap extends Thread
 	{
 		try
 		{
-			
-			Vector<ChatRoomManager> room_list=this.chat_server.getChatRoomList();
-			
-			//reset the chat rooms which belonged to this owner
+
+			Vector<ChatRoomManager> room_list = this.chat_server
+					.getChatRoomList();
+
+			// reset the chat rooms which belonged to this owner
 			for (int i = 0; i < room_list.size(); i++)
 			{
-				if(room_list.get(i).getRoomOwner().equals(this.getIdentity()))
+				if (room_list.get(i).getRoomOwner().equals(this.getIdentity()))
 					room_list.get(i).setRoomOwner(null);
 			}
-			
+
 			this.chat_room_manager.removeClient(this);
-						
+
 			this.input.close();
 			this.output.close();
 			this.socket.close();
@@ -159,14 +164,14 @@ public class ClientWrap extends Thread
 	// set the new identity for the client at the Server side
 	public void switchIdentity(String indentity)
 	{
-		String former_id=this.indentity;
+		String former_id = this.indentity;
 		this.indentity = indentity;
-		
-		if (former_id==null||former_id.equals(""))
+
+		if (former_id == null || former_id.equals(""))
 		{
 			return;
 		}
-		
+
 		// check if it's a "guest name"
 		if (Pattern.matches("^guest[1-9]\\d*$", former_id))
 		{
@@ -189,29 +194,26 @@ public class ClientWrap extends Thread
 		this.chat_room_manager = targetRoom;
 
 		this.chat_room_manager.addClient(this);
-		
-		// delete the client from the original chat room list,
+
+		// delete the client from the original chat room list, if original room
+		// is nowhere ,it will be set as null
 		if (original_room != null)
-			return original_room.removeClient(this);
+		{
+
+			boolean result = original_room.removeClient(this);
+			if (original_room.getRoomOwner().equals("")
+					&& original_room.getGuestNum() == 0)
+			{// now the room is empty
+				this.chat_server.removeChatRoomById(original_room.getRoomId());
+			}
+			return result;
+		}
+
 		else
 			// this means that this user moves to the target chat room from
 			// "nowhere"
 			return true;
 
-	}
-
-	// support method ,extract json info for further usage
-	private static JSONObject parserGiveString(String msg)
-	{
-		JSONObject json_obj = null;
-		try
-		{
-			json_obj = (JSONObject) ClientWrap.json_parser.parse(msg);
-		} catch (ParseException e)
-		{
-			e.printStackTrace();
-		}
-		return json_obj;
 	}
 
 	// overwrite this to support vector.contains(obj)
@@ -221,6 +223,16 @@ public class ClientWrap extends Thread
 	public boolean equals(Object obj)
 	{
 		return this.getIdentity().equals(((ClientWrap) obj).getIdentity());
+	}
+
+	private boolean validIdentity(String identity)
+	{
+		return Pattern.matches(ClientWrap.VALID_IDENTITY_REX, identity);
+	}
+
+	private boolean validRoomId(String room_id)
+	{
+		return Pattern.matches(ClientWrap.VALID_ROOM_ID_REX, room_id);
 	}
 
 	// the thread that deals with a single client Connection
@@ -236,21 +248,30 @@ public class ClientWrap extends Thread
 			{// block and will wait for the input from client
 
 				// see what the client message says and act accordingly
-
-
-				this.handleRequest(input_from_client);
+				JSONObject msg_json = null;
+				try
+				{
+					msg_json = (JSONObject) ClientWrap.json_parser
+							.parse(input_from_client);
+				} catch (ParseException e)
+				{
+					e.printStackTrace();
+				}
+				
+				this.handleRequest(msg_json);
+				
 
 				this.chat_room_manager.broadCastMessage(input_from_client);
 
 			}
 
-		} 
-//		catch (SocketException e)
-//		{
-//			log.debug("TCP connection is forced to terminate");
-//			this.disonnect();
-//		} 
-		
+		}
+		// catch (SocketException e)
+		// {
+		// log.debug("TCP connection is forced to terminate");
+		// this.disonnect();
+		// }
+
 		catch (IOException e)
 		{
 			e.printStackTrace();
@@ -258,16 +279,16 @@ public class ClientWrap extends Thread
 
 	}
 
-	private void handleRequest(String input_from_client)
+	private void handleRequest(JSONObject msg_json)
 	{
-		JSONObject msg_json = ClientWrap
-				.parserGiveString(input_from_client);
-		JSONObject response_json=new JSONObject();
-		String request_type=(String) msg_json.get("type");
-		
-		//=============================================================
-		//TYPE_INDENTITY_CHANGE
-		
+
+
+		JSONObject response_json = new JSONObject();
+		String request_type = (String) msg_json.get("type");
+
+		// =============================================================
+		// TYPE_INDENTITY_CHANGE
+
 		if (request_type.equals(ClientWrap.TYPE_INDENTITY_CHANGE))
 		{
 			// apply to change the identity from client
@@ -282,12 +303,15 @@ public class ClientWrap extends Thread
 			String former_id = this.getIdentity();
 			response_json.put("formor", former_id);
 
-			if (chat_server.checkIdentityOccupied(msg_identity))
-			{
+			if (!this.validIdentity(msg_identity)
+					|| chat_server.identityExist(msg_identity))
+			{// request identity invalid or has been occupied already
+
 				response_json.put("identity", former_id);
 
 				// only the client with the failed request will get response
 				this.sendNextMessage(response_json.toJSONString());
+				return;
 
 			} else
 			{// successful change
@@ -296,20 +320,175 @@ public class ClientWrap extends Thread
 
 				this.switchIdentity(msg_identity);
 
-				this.chat_server.broadcastToAll(response_json
-						.toJSONString());
+				this.chat_server.broadcastToAll(response_json.toJSONString());
+				return;
 			}
 		}
 
-		
+		// =============================================================
+		// TYPE_JOIN
+		if (request_type.equals(ClientWrap.TYPE_JOIN))
+		{
+			String room_id = (String) msg_json.get("roomid");
+			String former = this.chat_room_manager.getRoomId();
+			// TODO fuck the stupid code provided by the specification!need add
+			// a status!
+
+			response_json.put("type", TYPE_ROOM_CHANGE);
+			response_json.put("identity", this.getIdentity());
+			response_json.put("former", former);
+
+			if (!this.validIdentity(room_id)
+					|| !chat_server.roomIdExist(room_id))
+			{// request room_id invalid or not exist
+
+				response_json.put("roomid", former);
+
+				// only the client with the failed request will get response
+				this.sendNextMessage(response_json.toJSONString());
+				return;
+
+			} else
+			{// successful change
+
+				response_json.put("roomid", room_id);
+
+				this.switchIdentity(room_id);
+
+				this.chat_server.broadcastToAll(response_json.toJSONString());
+				return;
+			}
+		}
+
+		// =============================================================
+		// TYPE_WHO
+		if (request_type.equals(ClientWrap.TYPE_WHO))
+		{
+			String room_id = (String) msg_json.get("roomid");
+
+			response_json.put("type", TYPE_ROOM_CONTENTS);
+
+			if (!this.validIdentity(room_id)
+					|| !chat_server.roomIdExist(room_id))
+			{// request identity invalid or has been occupied already
+
+				response_json.put("success", new Boolean(false));
+
+				// only the client with the failed request will get response
+				this.sendNextMessage(response_json.toJSONString());
+				return;
+
+			} else
+			{// successful get the list
+				response_json.put("success", new Boolean(true));
+
+				JSONArray identities = new JSONArray();
+				identities.add(this.chat_room_manager.getRoomMembers());
+
+				response_json.put("identitie", identities);
+				response_json.put("owner",
+						this.chat_room_manager.getRoomOwner());
+
+				this.sendNextMessage(response_json.toJSONString());
+				return;
+			}
+		}
+
+		// =============================================================
+		// TYPE_LIST
+		if (request_type.equals(ClientWrap.TYPE_LIST))
+		{
+			response_json = this.chat_server.getRoomListJson();
+
+			response_json.put("type", TYPE_ROOM_LIST);
+
+			this.sendNextMessage(response_json.toJSONString());
+			;
+			return;
+		}
+
+		// =============================================================
+		// TYPE_CREATE_ROOM
+		if (request_type.equals(ClientWrap.TYPE_CREATE_ROOM))
+		{
+			String room_id = (String) msg_json.get("roomid");
+
+			response_json = this.chat_server.getRoomListJson();
+
+			response_json.put("type", TYPE_ROOM_LIST);
+
+			if (!this.validIdentity(room_id)
+					|| chat_server.roomIdExist(room_id))
+			{// request room_id invalid or has been occupied already
+
+				response_json.put("success", new Boolean(false));
+
+				this.sendNextMessage(response_json.toJSONString());
+				return;
+
+			} else
+			{// successful create
+				response_json.put("success", new Boolean(true));
+
+				this.sendNextMessage(response_json.toJSONString());
+				return;
+			}
+		}
+
+		// =============================================================
+		// TYPE_KICK
+		if (request_type.equals(ClientWrap.TYPE_KICK))
+		{
+			String room_id = (String) msg_json.get("roomid");
+			ChatRoomManager target_room = null;
+
+			// authenticate the right to do so
+			if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
+				return;
+
+			if (this.getIdentity().equals(target_room.getRoomOwner()))
+			{
+				Long time = (Long) msg_json.get("time");
+				String msg_identity = (String) msg_json.get("identity");
+
+				long deadline = System.currentTimeMillis() + time;
+				this.chat_room_manager.banIdentity(msg_identity, deadline);
+				
+				//TODO we have to add a list to maintain all the clients online right now!
+				
+			}
+
+			else
+				return;// do nothing
+		}
+
+		// =============================================================
+		// TYPE_DELETE
+		if (request_type.equals(ClientWrap.TYPE_DELETE))
+		{
+			String room_id = (String) msg_json.get("roomid");
+			ChatRoomManager target_room = null;
+
+			// authenticate the right to do so
+			if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
+				return;
+
+			if (this.getIdentity().equals(target_room.getRoomOwner()))
+			{
+				//TODO we have to add a list to maintain all the clients online right now!
+			}
+
+			else
+				return;// do nothing
+		}
+
+		// =============================================================
+		// TYPE_MESSAGE
 		if (request_type.equals(ClientWrap.TYPE_MESSAGE))
 		{
-			
+
 		}
-		
-		// TODO other response if and method
+
 	}
 
-	
-	
 }

@@ -1,8 +1,12 @@
 package rocklee.server;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 /**
  * This class uses a vector to manage a chatroom and the users within this room.
@@ -30,6 +34,8 @@ public class ChatRoomManager
 	// the collection of the clients in this chat room
 	private Vector<ClientWrap> client_list = null;
 
+	private Map<String, Long> black_list = new HashMap<String, Long>();
+	
 	public ChatRoomManager(String id, ClientWrap owner)
 	{
 
@@ -107,9 +113,27 @@ public class ChatRoomManager
 		return result.isEmpty()?null:result;
 	}
 	
+	public JSONObject getJsonObject()
+	{
+		JSONObject json_obj=new JSONObject();
+		json_obj.put("roomid", this.room_id);
+		json_obj.put("count", this.getGuestNum());
+		return json_obj;
+	}
+	
+	
 	public int getGuestNum()
 	{
 		return this.client_list.size();
 	}
 	
+	public boolean onBlackList(String name)
+	{
+		return black_list.containsKey(name);
+	}
+	
+	public void banIdentity(String name,long deadline)
+	{
+		black_list.put(name, deadline);
+	}
 }

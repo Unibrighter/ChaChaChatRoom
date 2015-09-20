@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 public class ChatServer
@@ -16,7 +17,7 @@ public class ChatServer
 	private static Logger log = Logger.getLogger(ChatServer.class);
 
 	private ServerSocket serverSocket = null;
-	
+
 	public static final String MAIN_HALL_NAME = "MainHall";
 	private ChatRoomManager main_hall = null;
 	private Vector<ChatRoomManager> room_list = null;
@@ -27,9 +28,8 @@ public class ChatServer
 	// this is used to keep track of the next minimum possible index number
 	private volatile boolean[] guest_name_flag = null;
 
-
 	private boolean listenning = true;
-	
+
 	private int port_num = 4444;
 
 	public ChatServer(int port_num)
@@ -74,16 +74,19 @@ public class ChatServer
 				e.printStackTrace();
 			}
 
-			ClientWrap new_client = new ClientWrap(socket, "guest"+this.getNextGuestName());
-			
-			//inform the client of the new name
-			JSONObject connectJson=new JSONObject();
+			ClientWrap new_client = new ClientWrap(socket, "guest"
+					+ this.getNextGuestName());
+
+			// inform the client of the new name
+			JSONObject connectJson = new JSONObject();
 			connectJson.put("type", "newidentity");
-			connectJson.put("identity", "guest"+this.getNextGuestName());
-			
-			//inform the new client of its guest name
+			connectJson.put("identity", "guest" + this.getNextGuestName());
+
+			// inform the new client of its guest name
 			new_client.sendNextMessage(connectJson.toJSONString());
-			
+
+			// indicates it comes from nowhere
+			new_client.setChatRoom(null);
 			// set the broadcasting channel for this client
 			// and add the new client to the main hall as default
 			new_client.switchChatRoom(main_hall);
@@ -122,6 +125,7 @@ public class ChatServer
 	{
 		return this.room_list;
 	}
+
 	public void broadcastToAll(String msg)
 	{
 		// broad cast to all chat room channels ,one by one
@@ -141,7 +145,7 @@ public class ChatServer
 			// found the first index which has been used
 			if (!guest_name_flag[i])
 			{
-				guest_name_flag[i]=true;
+				guest_name_flag[i] = true;
 				index = i + 1;
 				break;
 			}
@@ -157,25 +161,54 @@ public class ChatServer
 
 	}
 
-	//check all the users' names online, to see if a given identity already exists
-	public boolean checkIdentityOccupied(String identity)
+	// check all the users' names online, to see if a given identity already
+	// exists
+	public boolean identityExist(String identity)
 	{
-		Vector<String> allIdentities=new Vector<String>();
-		
+		Vector<String> allIdentities = new Vector<String>();
+
 		for (int i = 0; i < this.room_list.size(); i++)
 		{
 			allIdentities.addAll(this.room_list.get(i).getRoomMembers());
 		}
-		
+
 		return (allIdentities.contains(identity));
 	}
 	
-	public void releaseGuestIndex(int i)
+	public boolean roomIdExist(String room_id)
 	{
-		this.guest_name_flag[i-1]=false;
+		for (int i = 0; i < this.room_list.size(); i++)
+		{
+			if(this.room_list.get(i).getRoomId().equals(room_id))
+				return true;			
+		}
+		return false;
 	}
 	
+
+	public void releaseGuestIndex(int i)
+	{
+		this.guest_name_flag[i - 1] = false;
+	}
 	
+	public JSONObject getRoomListJson()
+	{
+		JSONObject response_json = new JSONObject();
+
+		JSONArray rooms = new JSONArray();
+
+		for (int i = 0; i < room_list.size(); i++)
+		{
+			rooms.add(this.room_list.get(i).getJsonObject());
+		}
+
+		response_json.put("rooms", rooms);
+
+
+		return response_json;
+	}
+	
+
 	public static void main(String[] args)
 	{
 		ChatServer chatServer = new ChatServer(4444);
