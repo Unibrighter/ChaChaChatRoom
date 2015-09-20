@@ -37,11 +37,11 @@ public class WriteThread extends Thread
 
 	public String getPrefix()
 	{
-		String prefix="["+this.chat_client.getRoomId()+"] "+this.chat_client.getIdentity()+">";
+		String prefix = "[" + this.chat_client.getRoomId() + "] "
+				+ this.chat_client.getIdentity() + ">";
 		return prefix;
 	}
 
-	
 	public void run()
 	{
 		try
@@ -52,10 +52,11 @@ public class WriteThread extends Thread
 			while (this.chat_client.isOnline() && readline != null)
 			{
 				this.handInput(readline);
-				
-				//TODO how to make sure that this prefix always show itself at the buttom line before input?
+
+				// TODO how to make sure that this prefix always show itself at
+				// the buttom line before input?
 				System.out.print(this.getPrefix());
-				
+
 				readline = scanner.nextLine();
 			}
 			os.close();
@@ -99,6 +100,7 @@ public class WriteThread extends Thread
 			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			if (!this.validIdentity(args[1]))
@@ -121,6 +123,7 @@ public class WriteThread extends Thread
 			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			command_json.put("roomid", args[1]);
@@ -136,6 +139,7 @@ public class WriteThread extends Thread
 			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			command_json.put("roomid", args[1]);
@@ -151,6 +155,7 @@ public class WriteThread extends Thread
 			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			if (!this.validRoomId(args[1]))
@@ -180,50 +185,48 @@ public class WriteThread extends Thread
 			this.sendNextJson(command_json);
 			return;
 		}
-		
+
 		if (args[0].equals(ChatClient.TYPE_KICK))
-		{//TODO kick command 
+		{// TODO kick command
 			if (args.length < 4)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			if (!this.validIdentity(args[1]))
 			{
-				System.out.println("Identity " + args[1]
-						+ " is invalid.");
+				System.out.println("Identity " + args[1] + " is invalid.");
 				return;
 			}
-			
+
 			if (!this.validRoomId(args[2]))
 			{
-				System.out.println("RoomId " + args[1]
-						+ " is invalid.");
+				System.out.println("RoomId " + args[1] + " is invalid.");
 				return;
 			}
-			
+
 			if (!this.validRoomId(args[3]))
 			{
-				System.out.println("RoomId " + args[1]
-						+ " is invalid.");
+				System.out.println("RoomId " + args[1] + " is invalid.");
 				return;
 			}
-			
-			
+
 			command_json.put("type", ChatClient.TYPE_KICK);
 			command_json.put("identity", args[1]);
 			command_json.put("roomid", args[2]);
 			command_json.put("time", new Long(Long.parseLong(args[3])));
-			
+
 			this.sendNextJson(command_json);
 			return;
 		}
-		
+
 		if (args[0].equals(ChatClient.TYPE_DELETE))
 		{
 			if (args.length < 2)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
+				return;
 			}
 
 			if (!this.validRoomId(args[1]))
@@ -262,6 +265,7 @@ public class WriteThread extends Thread
 
 	private void sendNextJson(JSONObject json_obj)
 	{
+		this.log.debug(json_obj);
 		this.os.println(json_obj.toJSONString());
 		this.os.flush();
 	}

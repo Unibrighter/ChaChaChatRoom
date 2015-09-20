@@ -4,6 +4,8 @@ import java.net.Socket;
 
 import org.apache.log4j.Logger;
 
+import sun.net.util.IPAddressUtil;
+
 public class ChatClient
 {
 	// for debug and info, since log4j is thread safe, it can also be used to
@@ -39,8 +41,8 @@ public class ChatClient
 	private Socket socket = null;
 	private int port_num = -1;
 
-	private Thread read = null;
-	private Thread write = null;
+	public Thread read = null;
+	public Thread write = null;
 
 	public ChatClient(String ipAddress, int port_num)
 	{
@@ -60,6 +62,17 @@ public class ChatClient
 	{
 		this.read.start();
 		this.write.start();
+		try
+		{
+			this.write.join();
+			this.read.join();
+		} catch (InterruptedException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.exit(0);
+
 	}
 
 	public void setOnline(boolean online)
@@ -104,7 +117,21 @@ public class ChatClient
 
 	public static void main(String[] args)
 	{
-		ChatClient chat_client = new ChatClient("127.0.0.1", 4444);
+		// deal with input arguments
+		if (IPAddressUtil.isIPv4LiteralAddress(args[0]))
+			System.err.println("invalid ip address");
+		;
+		int port = 4444;
+		for (int i = 0; i < args.length; i++)
+		{
+			if (args[i].equalsIgnoreCase("-p"))
+			{
+				port = Integer.parseInt(args[i+1]);
+				break;
+			}
+
+		}
+		ChatClient chat_client = new ChatClient(args[0], port);
 		chat_client.startChat();
 	}
 }

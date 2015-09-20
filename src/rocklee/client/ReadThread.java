@@ -53,9 +53,11 @@ public class ReadThread extends Thread
 			line = is.readLine();
 			while (this.chat_client.isOnline() && line != null)
 			{
+				
 				// System.out.println(chat_client.getIdentity() + " : " + line);
-
+				this.handleResponse(line);
 				line = is.readLine();
+				
 			}
 
 			is.close();
@@ -73,6 +75,7 @@ public class ReadThread extends Thread
 		try
 		{
 			response_json = (JSONObject) json_parser.parse(raw_input);
+			System.out.println(response_json);
 		} catch (ParseException e)
 		{
 			e.printStackTrace();
@@ -92,7 +95,6 @@ public class ReadThread extends Thread
 				// server as
 				// guest#
 				System.out.println("Connected to localhost as " + identity);
-				return;
 			}
 
 			else
@@ -100,11 +102,12 @@ public class ReadThread extends Thread
 				if (former.equals(identity)
 						&& former.equals(this.chat_client.getIdentity()))
 				{// identity remains the same
-					System.out.println("Requested identity invalid or in use");
+					log.info("Requested identity invalid or in use");
 					return;
 				}
 				System.out.println(former + " is now " + identity);
 			}
+			this.chat_client.setIdentity(identity);
 			return;
 		}
 
@@ -127,19 +130,26 @@ public class ReadThread extends Thread
 			{
 				// the destination is empty, indicates that user is going to
 				// disconnect
-				System.out.println(identity + " leaves " + room_id);
+				System.out.println(identity + " leaves MainHall");
+				System.out.println(response_json);
+				
+				if(this.chat_client.getIdentity().equals(identity))
+				{//this client is going to disconnect itself
+					this.chat_client.setOnline(false);
+				}
+				
 				return;
 			}
 
 			if (former.equals(identity)
 					&& former.equals(this.chat_client.getIdentity()))
 			{// room id remains the same
-				System.out
-						.println("The requested room is invalid or non existent.");
+				log.info("The requested room is invalid or non existent.");
 				return;
 			}
 			System.out.println(identity + " moves from " + former + " to "
 					+ room_id);
+			this.chat_client.setRoomId(room_id);
 			return;
 		}
 
@@ -156,9 +166,9 @@ public class ReadThread extends Thread
 			
 			
 			//if request failed,print the failing message
-			if(!success)
+			if(success==null||!success)
 			{
-				System.out.println("The requested room is invalid or non existent.");
+				log.info("The requested room is invalid or non existent.");
 				return;
 			}
 			
@@ -189,7 +199,7 @@ public class ReadThread extends Thread
 				{
 					JSONObject room_json_obj = (JSONObject) rooms.get(i);
 					System.out.println((String) room_json_obj.get("roomid")
-							+ ": " + (Integer) room_json_obj.get("count"));
+							+ ": " + (Long) room_json_obj.get("count"));
 				}
 
 				return;

@@ -50,9 +50,13 @@ public class ClientWrap extends Thread
 	public static final String TYPE_MESSAGE = "message";
 	public static final String TYPE_QUIT = "quit";
 
+	
 	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
 	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
 
+	
+	private Map<String,Long> unwelcome_room_list=new HashMap<String, Long>();
+	
 	private String indentity = null;// user's identity
 
 	private ChatRoomManager chat_room_manager = null;
@@ -62,6 +66,9 @@ public class ClientWrap extends Thread
 	private BufferedReader input = null;
 	private PrintWriter output = null;
 
+	
+	
+	
 	public ClientWrap(Socket socket, String name)
 	{
 		this(socket);
@@ -87,6 +94,13 @@ public class ClientWrap extends Thread
 			e.printStackTrace();
 		}
 	}
+	
+	public void addUnwelcomeList(String roomId,Long until_time)
+	{
+		this.unwelcome_room_list.put(roomId, until_time);
+	}
+	
+	
 
 	// Set up the chatRoomManager through which we can get access to other
 	// clients
@@ -331,8 +345,6 @@ public class ClientWrap extends Thread
 		{
 			String room_id = (String) msg_json.get("roomid");
 			String former = this.chat_room_manager.getRoomId();
-			// TODO fuck the stupid code provided by the specification!need add
-			// a status!
 
 			response_json.put("type", TYPE_ROOM_CHANGE);
 			response_json.put("identity", this.getIdentity());
