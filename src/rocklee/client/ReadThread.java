@@ -69,11 +69,12 @@ public class ReadThread extends Thread
 	public void handleResponse(String raw_input)
 	{
 		JSONObject response_json = null;
-
+		System.out.println(raw_input);
+		
 		try
 		{
 			response_json = (JSONObject) json_parser.parse(raw_input);
-			log.debug(response_json);
+
 		} catch (ParseException e)
 		{
 			e.printStackTrace();
@@ -94,7 +95,6 @@ public class ReadThread extends Thread
 				// guest#
 				log.debug("Connected to localhost as " + identity);
 				System.out.println("Connected to localhost as " + identity);
-				return;
 			}
 
 			else
@@ -106,10 +106,10 @@ public class ReadThread extends Thread
 					System.out.println("Requested identity invalid or in use");
 					return;
 				}
-
+				log.debug(former + " now is " + identity);
+				System.out.println(former + " now is " + identity);
 			}
-			log.debug(former + " now is " + identity);
-			System.out.println(former + " now is " + identity);
+
 			this.chat_client.setIdentity(identity);
 			return;
 		}
@@ -186,6 +186,7 @@ public class ReadThread extends Thread
 		if (type.equals(ChatClient.TYPE_ROOM_LIST))
 		{
 
+			boolean found=false;
 			JSONArray rooms = (JSONArray) response_json.get("rooms");
 
 			String request_room_name = this.chat_client.getRequestNewRoomId();
@@ -195,6 +196,7 @@ public class ReadThread extends Thread
 				if (((String) room.get("roomid")).equals(this.chat_client
 						.getRequestNewRoomId()))
 				{
+					found=true;
 					log.debug("Room " + request_room_name + " created");
 					System.out
 							.println("Room " + request_room_name + " created");
@@ -203,7 +205,8 @@ public class ReadThread extends Thread
 				}
 			}
 
-			if (!(request_room_name == null || request_room_name.equals("")))
+			//we are looking for new created room,yet not found 
+			if (!found&&!(request_room_name == null || request_room_name.equals("")))
 			{
 				log.debug("Room " + this.chat_client.getRequestNewRoomId()
 						+ " is invalid or already in use.");
@@ -211,6 +214,16 @@ public class ReadThread extends Thread
 						+ this.chat_client.getRequestNewRoomId()
 						+ " is invalid or already in use.");
 				return;
+			}
+			
+			if(!found)
+			{
+				for (int i = 0; i < rooms.size(); i++)
+				{
+					JSONObject room_json_obj = (JSONObject) rooms.get(i);
+					System.out.println((String) room_json_obj.get("roomid")
+							+ ": " + (Long) room_json_obj.get("count"));
+				}
 			}
 
 		}

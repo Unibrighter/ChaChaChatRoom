@@ -115,12 +115,6 @@ public class ChatClient
 
 	public static void main(String[] args)
 	{
-		// deal with input arguments
-		if (IPAddressUtil.isIPv4LiteralAddress(args[0]))
-		{
-			System.err.println("Invalid ip address");
-			System.out.println(-1);
-		}
 
 		int port = 4444;
 		for (int i = 0; i < args.length; i++)

@@ -19,7 +19,7 @@ public class ChatServer
 	private ServerSocket serverSocket = null;
 
 	public static final String MAIN_HALL_NAME = "MainHall";
-	private ChatRoomManager main_hall = null;
+	public ChatRoomManager main_hall = null;
 	private Vector<ChatRoomManager> room_list = null;
 
 	// this number indicates that how many users are using names like "guest###"
@@ -67,31 +67,45 @@ public class ChatServer
 		{
 			Socket socket = null;
 			try
-			{
+			{//wait for next connection to start a new thread
 				socket = serverSocket.accept();
 			} catch (IOException e)
 			{
 				e.printStackTrace();
 			}
 
-			ClientWrap new_client = new ClientWrap(socket, "guest"
-					+ this.getNextGuestName());
+			
+			ClientWrap new_client = new ClientWrap(socket, this.getNextGuestName());
 
+			System.out.println("new client!!!!!"+new_client.getIdentity());
 			// inform the client of the new name
-			JSONObject connectJson = new JSONObject();
-			connectJson.put("type", "newidentity");
-			connectJson.put("identity", "guest" + this.getNextGuestName());
-
-			// inform the new client of its guest name
-			new_client.sendNextMessage(connectJson.toJSONString());
-
+			JSONObject connect_new_id = new JSONObject();
+			connect_new_id.put("type", "newidentity");
+			connect_new_id.put("identity", new_client.getIdentity());
+			connect_new_id.put("former", "");
+			
+			new_client.setChatSever(this);
+			
 			// indicates it comes from nowhere
 			new_client.setChatRoom(null);
+			
+			// inform the client of the new name
+			JSONObject connect_new_name = new JSONObject();
+			connect_new_name.put("type", "roomchange");
+			connect_new_name.put("identity", new_client.getIdentity());
+			connect_new_name.put("former", "");
+			connect_new_name.put("roomid", "MainHall");
+			
 			// set the broadcasting channel for this client
 			// and add the new client to the main hall as default
 			new_client.switchChatRoom(main_hall);
 
 			new_client.start();// start to serve the client
+			
+			// inform the new client of its guest name
+			new_client.sendNextMessage(connect_new_id.toJSONString());
+			new_client.sendNextMessage(connect_new_name.toJSONString());
+			
 		}
 	}
 
@@ -202,16 +216,25 @@ public class ChatServer
 			rooms.add(this.room_list.get(i).getJsonObject());
 		}
 
+		response_json.put("type", ClientWrap.TYPE_ROOM_LIST);
 		response_json.put("rooms", rooms);
 
-
+		System.out.println(response_json);
+		
 		return response_json;
 	}
 	
 
 	public static void main(String[] args)
 	{
-		ChatServer chatServer = new ChatServer(4444);
+		int port=4444;
+		for (int i = 0; i < args.length; i++)
+		{
+			if(args[i].equals("-p"))
+				port=Integer.parseInt(args[i+1]);
+		}
+		
+		ChatServer chatServer = new ChatServer(port);
 		chatServer.startService();
 	}
 

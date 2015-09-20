@@ -8,6 +8,8 @@ import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import com.sun.security.ntlm.Client;
+
 /**
  * This class uses a vector to manage a chatroom and the users within this room.
  * Basically it supports the broadcast and some group functions regarding to the
@@ -34,7 +36,7 @@ public class ChatRoomManager
 	// the collection of the clients in this chat room
 	private Vector<ClientWrap> client_list = null;
 
-	private Map<String, Long> black_list = new HashMap<String, Long>();
+	private Map<ClientWrap, Long> black_list = new HashMap<ClientWrap, Long>();
 	
 	public ChatRoomManager(String id, ClientWrap owner)
 	{
@@ -82,6 +84,18 @@ public class ChatRoomManager
 		ClientWrap dummy = new ClientWrap(null, client_identity);
 		return this.client_list.contains(dummy);
 	}
+	
+	public ClientWrap getClientWarpByName(String name)
+	{
+		for (int i = 0; i < client_list.size(); i++)
+		{
+			ClientWrap tmp=this.client_list.get(i);
+			if(tmp.getIdentity().equals(name))
+			return tmp;
+		}
+		return null;
+	}
+	
 
 	public String getRoomId()
 	{
@@ -113,6 +127,7 @@ public class ChatRoomManager
 		return result.isEmpty()?null:result;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public JSONObject getJsonObject()
 	{
 		JSONObject json_obj=new JSONObject();
@@ -132,8 +147,22 @@ public class ChatRoomManager
 		return black_list.containsKey(name);
 	}
 	
-	public void banIdentity(String name,long deadline)
+	public void banIdentity(ClientWrap name,long deadline)
 	{
 		black_list.put(name, deadline);
+	}
+	
+	public boolean BlockedUserByName(ClientWrap name)
+	{
+		if(this.black_list.containsKey(name))
+		{
+			return black_list.get(name)<=System.currentTimeMillis();
+		}
+		else return false;
+	}
+	
+	public Vector<ClientWrap> getAllClients()
+	{
+		return this.client_list;
 	}
 }

@@ -17,6 +17,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import com.sun.xml.internal.bind.v2.model.core.ID;
+
 import rocklee.client.ChatClient;
 
 /**
@@ -50,13 +52,9 @@ public class ClientWrap extends Thread
 	public static final String TYPE_MESSAGE = "message";
 	public static final String TYPE_QUIT = "quit";
 
-	
 	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
 	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
 
-	
-	private Map<String,Long> unwelcome_room_list=new HashMap<String, Long>();
-	
 	private String indentity = null;// user's identity
 
 	private ChatRoomManager chat_room_manager = null;
@@ -66,9 +64,13 @@ public class ClientWrap extends Thread
 	private BufferedReader input = null;
 	private PrintWriter output = null;
 
-	
-	
-	
+	private boolean online = true;
+
+	public void setOnline(boolean online)
+	{
+		this.online = online;
+	}
+
 	public ClientWrap(Socket socket, String name)
 	{
 		this(socket);
@@ -94,13 +96,6 @@ public class ClientWrap extends Thread
 			e.printStackTrace();
 		}
 	}
-	
-	public void addUnwelcomeList(String roomId,Long until_time)
-	{
-		this.unwelcome_room_list.put(roomId, until_time);
-	}
-	
-	
 
 	// Set up the chatRoomManager through which we can get access to other
 	// clients
@@ -134,9 +129,6 @@ public class ClientWrap extends Thread
 	// then we need to attach '\n' to its end
 	public void sendNextMessage(String msg)
 	{
-		if (!msg.endsWith("\n"))
-			msg += "\n";
-
 		this.output.println(msg);
 		this.output.flush();
 	}
@@ -158,6 +150,8 @@ public class ClientWrap extends Thread
 			}
 
 			this.chat_room_manager.removeClient(this);
+
+			this.setOnline(false);
 
 			this.input.close();
 			this.output.close();
@@ -202,6 +196,10 @@ public class ClientWrap extends Thread
 		if (targetRoom == null)
 			return false;
 
+		// still being banned
+		if (targetRoom.BlockedUserByName(this))
+			return false;
+
 		ChatRoomManager original_room = this.chat_room_manager;
 
 		// add the client to the new chat room before leave the original
@@ -216,7 +214,7 @@ public class ClientWrap extends Thread
 
 			boolean result = original_room.removeClient(this);
 			if (original_room.getRoomOwner().equals("")
-					&& original_room.getGuestNum() == 0)
+					&& original_room.getGuestNum() == 0&&!original_room.getRoomId().equals("MainHall"))
 			{// now the room is empty
 				this.chat_server.removeChatRoomById(original_room.getRoomId());
 			}
@@ -258,24 +256,27 @@ public class ClientWrap extends Thread
 
 		try
 		{
-			while ((input_from_client = input.readLine()) != null)
+			while (online)
 			{// block and will wait for the input from client
 
-				// see what the client message says and act accordingly
-				JSONObject msg_json = null;
-				try
+				if ((input_from_client = input.readLine()) != null)
 				{
-					msg_json = (JSONObject) ClientWrap.json_parser
-							.parse(input_from_client);
-				} catch (ParseException e)
-				{
-					e.printStackTrace();
-				}
-				
-				this.handleRequest(msg_json);
-				
+					// see what the client message says and act accordingly
+					JSONObject msg_json = null;
+					try
+					{
+						log.debug(this.getIdentity() + ">>>>>"
+								+ input_from_client);
+						msg_json = (JSONObject) ClientWrap.json_parser
+								.parse(input_from_client);
 
-				this.chat_room_manager.broadCastMessage(input_from_client);
+						this.handleRequest(msg_json);
+
+					} catch (ParseException e)
+					{
+						e.printStackTrace();
+					}
+				}
 
 			}
 
@@ -293,9 +294,8 @@ public class ClientWrap extends Thread
 
 	}
 
-	private void handleRequest(JSONObject msg_json)
+	private void handleRequest(JSONObject msg_json) throws ParseException
 	{
-
 
 		JSONObject response_json = new JSONObject();
 		String request_type = (String) msg_json.get("type");
@@ -315,7 +315,7 @@ public class ClientWrap extends Thread
 
 			response_json.put("type", TYPE_NEW_IDENTITY);
 			String former_id = this.getIdentity();
-			response_json.put("formor", former_id);
+			response_json.put("former", former_id);
 
 			if (!this.validIdentity(msg_identity)
 					|| chat_server.identityExist(msg_identity))
@@ -353,21 +353,40 @@ public class ClientWrap extends Thread
 			if (!this.validIdentity(room_id)
 					|| !chat_server.roomIdExist(room_id))
 			{// request room_id invalid or not exist
-
-				response_json.put("roomid", former);
-
-				// only the client with the failed request will get response
-				this.sendNextMessage(response_json.toJSONString());
+				System.out.println("not fucking exist");
 				return;
-
 			} else
-			{// successful change
+			{// successful change attempt
 
-				response_json.put("roomid", room_id);
+				if (this.switchChatRoom(chat_server.getChatRoomById(room_id)))
+				{
+					response_json.put("roomid", room_id);
+					this.chat_server.broadcastToAll(response_json
+							.toJSONString());
 
-				this.switchIdentity(room_id);
+					// if the destination is going to be main hall
+					// there would be two extra messages
 
-				this.chat_server.broadcastToAll(response_json.toJSONString());
+					if (room_id.equals("MainHall"))
+					{
+						this.handleRequest((JSONObject) json_parser
+								.parse("{\"type\":\"list\"}"));
+						this.handleRequest((JSONObject) json_parser
+								.parse("{\"type\":\"who\""
+										+ ",\"roomid\":\"MainHall\"}"));
+					}
+
+				}
+
+				else
+				{
+					response_json.put("roomid", former);
+
+					// only the client with the failed request will get response
+					this.sendNextMessage(response_json.toJSONString());
+
+					return;
+				}
 				return;
 			}
 		}
@@ -383,21 +402,21 @@ public class ClientWrap extends Thread
 			if (!this.validIdentity(room_id)
 					|| !chat_server.roomIdExist(room_id))
 			{// request identity invalid or has been occupied already
-
-				response_json.put("success", new Boolean(false));
-
-				// only the client with the failed request will get response
-				this.sendNextMessage(response_json.toJSONString());
+				System.out.println("invalid room_id");
 				return;
 
 			} else
 			{// successful get the list
-				response_json.put("success", new Boolean(true));
-
 				JSONArray identities = new JSONArray();
-				identities.add(this.chat_room_manager.getRoomMembers());
+				Vector<String> members = this.chat_room_manager
+						.getRoomMembers();
+				for (int i = 0; i < members.size(); i++)
+				{
+					identities.add(members.get(i));
+				}
 
-				response_json.put("identitie", identities);
+				response_json.put("identities", identities);
+				response_json.put("roomid", room_id);
 				response_json.put("owner",
 						this.chat_room_manager.getRoomOwner());
 
@@ -415,7 +434,7 @@ public class ClientWrap extends Thread
 			response_json.put("type", TYPE_ROOM_LIST);
 
 			this.sendNextMessage(response_json.toJSONString());
-			;
+
 			return;
 		}
 
@@ -425,23 +444,19 @@ public class ClientWrap extends Thread
 		{
 			String room_id = (String) msg_json.get("roomid");
 
-			response_json = this.chat_server.getRoomListJson();
-
 			response_json.put("type", TYPE_ROOM_LIST);
 
 			if (!this.validIdentity(room_id)
 					|| chat_server.roomIdExist(room_id))
 			{// request room_id invalid or has been occupied already
 
-				response_json.put("success", new Boolean(false));
-
-				this.sendNextMessage(response_json.toJSONString());
 				return;
 
 			} else
 			{// successful create
-				response_json.put("success", new Boolean(true));
 
+				this.chat_server.addChatRoom(room_id, this);
+				response_json = this.chat_server.getRoomListJson();
 				this.sendNextMessage(response_json.toJSONString());
 				return;
 			}
@@ -463,11 +478,29 @@ public class ClientWrap extends Thread
 				Long time = (Long) msg_json.get("time");
 				String msg_identity = (String) msg_json.get("identity");
 
+				// get the client who is going to be kicked
+				ClientWrap target_client = this.chat_room_manager
+						.getClientWarpByName(msg_identity);
+
+				if (target_client == null)
+					return;
+
 				long deadline = System.currentTimeMillis() + time;
-				this.chat_room_manager.banIdentity(msg_identity, deadline);
-				
-				//TODO we have to add a list to maintain all the clients online right now!
-				
+				this.chat_room_manager.banIdentity(target_client, deadline);
+
+				// inform everyone of the change
+				response_json.put("type", TYPE_ROOM_CHANGE);
+				response_json.put("identity", target_client.getIdentity());
+				response_json.put("former", this.chat_room_manager.getRoomId());
+				response_json.put("roomid", "MainHall");
+
+				this.chat_room_manager.broadCastMessage(response_json
+						.toJSONString());
+
+				// chatroom switch
+				target_client.switchChatRoom(chat_server.main_hall);
+
+				return;
 			}
 
 			else
@@ -487,7 +520,15 @@ public class ClientWrap extends Thread
 
 			if (this.getIdentity().equals(target_room.getRoomOwner()))
 			{
-				//TODO we have to add a list to maintain all the clients online right now!
+				Vector<ClientWrap> people_inside = target_room.getAllClients();
+
+				for (int i = 0; i < people_inside.size(); i++)
+				{
+					people_inside.get(i).switchChatRoom(
+							this.chat_server.main_hall);
+				}
+
+				this.chat_server.removeChatRoomById(room_id);
 			}
 
 			else
@@ -498,9 +539,30 @@ public class ClientWrap extends Thread
 		// TYPE_MESSAGE
 		if (request_type.equals(ClientWrap.TYPE_MESSAGE))
 		{
+			String content = (String) msg_json.get("content");
+			response_json.put("type", TYPE_MESSAGE);
+			response_json.put("identity", this.getIdentity());
+			response_json.put("content", content);
 
+			this.chat_room_manager.broadCastMessage(response_json
+					.toJSONString());
+		}
+
+		// =============================================================
+		// TYPE_QUIT
+		if (request_type.equals(ClientWrap.TYPE_QUIT))
+		{
+			// inform everyone of the change
+			response_json.put("type", TYPE_ROOM_CHANGE);
+			response_json.put("identity", this.getIdentity());
+			response_json.put("former", this.chat_room_manager.getRoomId());
+			response_json.put("roomid", "");
+
+			this.chat_room_manager.broadCastMessage(response_json
+					.toJSONString());
+
+			this.disonnect();
 		}
 
 	}
-
 }
