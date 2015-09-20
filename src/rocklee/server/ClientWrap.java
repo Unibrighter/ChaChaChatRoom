@@ -214,7 +214,8 @@ public class ClientWrap extends Thread
 
 			boolean result = original_room.removeClient(this);
 			if (original_room.getRoomOwner().equals("")
-					&& original_room.getGuestNum() == 0&&!original_room.getRoomId().equals("MainHall"))
+					&& original_room.getGuestNum() == 0
+					&& !original_room.getRoomId().equals("MainHall"))
 			{// now the room is empty
 				this.chat_server.removeChatRoomById(original_room.getRoomId());
 			}
@@ -265,7 +266,7 @@ public class ClientWrap extends Thread
 					JSONObject msg_json = null;
 					try
 					{
-						log.debug(this.getIdentity() + ">>>>>"
+						log.warn(this.getIdentity() + ">>>>>"
 								+ input_from_client);
 						msg_json = (JSONObject) ClientWrap.json_parser
 								.parse(input_from_client);
@@ -280,12 +281,18 @@ public class ClientWrap extends Thread
 
 			}
 
+		} catch (SocketException e)
+		{
+			try
+			{
+				this.handleRequest((JSONObject) json_parser
+						.parse("{\"type\":\"quit\"}"));
+			} catch (ParseException e1)
+			{
+
+				e1.printStackTrace();
+			}
 		}
-		// catch (SocketException e)
-		// {
-		// log.debug("TCP connection is forced to terminate");
-		// this.disonnect();
-		// }
 
 		catch (IOException e)
 		{
@@ -353,7 +360,6 @@ public class ClientWrap extends Thread
 			if (!this.validIdentity(room_id)
 					|| !chat_server.roomIdExist(room_id))
 			{// request room_id invalid or not exist
-				System.out.println("not fucking exist");
 				return;
 			} else
 			{// successful change attempt

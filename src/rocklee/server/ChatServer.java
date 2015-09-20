@@ -49,7 +49,7 @@ public class ChatServer
 		{
 			e.printStackTrace();
 		}
-		log.debug("Server has been initialized!!!!");
+		log.warn("Server has been initialized!!!!");
 
 		// set up the main hall,owner is empty
 		main_hall = new ChatRoomManager(MAIN_HALL_NAME, null);
@@ -168,7 +168,7 @@ public class ChatServer
 		if (index == -1)
 		{
 
-			log.debug("Guests name has been used up!Set a larger flag array! ");
+			log.warn("Guests name has been used up!Set a larger flag array! ");
 			return "New_Guest";
 		}
 		return ("guest" + index);

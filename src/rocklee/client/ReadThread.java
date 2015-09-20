@@ -69,7 +69,7 @@ public class ReadThread extends Thread
 	public void handleResponse(String raw_input)
 	{
 		JSONObject response_json = null;
-		System.out.println(raw_input);
+//		System.out.println(raw_input);
 		
 		try
 		{
