@@ -10,6 +10,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import rocklee.utility.Config;
+
 /**
  * This thread get the input from the socket, analyze it , and then gives proper
  * responses, like printing some info to the Standard output for example.
@@ -83,28 +85,27 @@ public class ReadThread extends Thread
 
 		switch (type)
 		{
-		case ChatClient.TYPE_NEW_IDENTITY:
+		case Config.TYPE_NEW_IDENTITY:
 			this.handleType_new_identity(response_json);
 			break;
 
-		case ChatClient.TYPE_ROOM_CHANGE:
+		case Config.TYPE_ROOM_CHANGE:
 			this.handleType_room_change(response_json);
 			break;
-		case ChatClient.TYPE_ROOM_CONTENTS:
+		case Config.TYPE_ROOM_CONTENTS:
 			this.handleType_room_contents(response_json);
 			break;
 
-		case ChatClient.TYPE_ROOM_LIST:
+		case Config.TYPE_ROOM_LIST:
 			this.handleType_room_list(response_json);
 			break;
 
-		case ChatClient.TYPE_MESSAGE:
+		case Config.TYPE_MESSAGE:
 			this.handleType_message(response_json);
 			break;
 
 		default:
 			System.out.println("Something went wrong with the TYPE given!!!");
-			;
 		}
 
 	}

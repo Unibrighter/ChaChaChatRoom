@@ -9,6 +9,7 @@ import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import rocklee.utility.*;
 public class ChatServer
 {
 
@@ -216,7 +217,7 @@ public class ChatServer
 			rooms.add(this.room_list.get(i).getJsonObject());
 		}
 
-		response_json.put("type", ClientWrap.TYPE_ROOM_LIST);
+		response_json.put("type", Config.TYPE_ROOM_LIST);
 		response_json.put("rooms", rooms);
 
 		System.out.println(response_json);

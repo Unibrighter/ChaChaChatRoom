@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 
+import rocklee.utility.Config;
+
 import com.sun.org.apache.bcel.internal.generic.L2D;
 
 /**
@@ -95,9 +97,9 @@ public class WriteThread extends Thread
 
 		JSONObject command_json = new JSONObject();
 
-		if (args[0].equals(ChatClient.TYPE_INDENTITY_CHANGE))
+		if (args[0].equals(Config.TYPE_INDENTITY_CHANGE))
 		{
-			command_json.put("type", ChatClient.TYPE_INDENTITY_CHANGE);
+			command_json.put("type", Config.TYPE_INDENTITY_CHANGE);
 
 			if (args.length < 2)
 			{
@@ -118,9 +120,9 @@ public class WriteThread extends Thread
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_JOIN))
+		if (args[0].equals(Config.TYPE_JOIN))
 		{
-			command_json.put("type", ChatClient.TYPE_JOIN);
+			command_json.put("type", Config.TYPE_JOIN);
 
 			if (args.length < 2)
 			{
@@ -134,9 +136,9 @@ public class WriteThread extends Thread
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_WHO))
+		if (args[0].equals(Config.TYPE_WHO))
 		{
-			command_json.put("type", ChatClient.TYPE_WHO);
+			command_json.put("type", Config.TYPE_WHO);
 
 			if (args.length < 2)
 			{
@@ -150,9 +152,9 @@ public class WriteThread extends Thread
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_CREATE_ROOM))
+		if (args[0].equals(Config.TYPE_CREATE_ROOM))
 		{
-			command_json.put("type", ChatClient.TYPE_CREATE_ROOM);
+			command_json.put("type", Config.TYPE_CREATE_ROOM);
 
 			if (args.length < 2)
 			{
@@ -174,21 +176,21 @@ public class WriteThread extends Thread
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_LIST))
+		if (args[0].equals(Config.TYPE_LIST))
 		{
-			command_json.put("type", ChatClient.TYPE_LIST);
+			command_json.put("type", Config.TYPE_LIST);
 			this.sendNextJson(command_json);
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_CREATE_ROOM))
+		if (args[0].equals(Config.TYPE_CREATE_ROOM))
 		{
-			command_json.put("type", ChatClient.TYPE_CREATE_ROOM);
+			command_json.put("type", Config.TYPE_CREATE_ROOM);
 			this.sendNextJson(command_json);
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_KICK))
+		if (args[0].equals(Config.TYPE_KICK))
 		{// TODO kick command
 			if (args.length < 4)
 			{
@@ -214,7 +216,7 @@ public class WriteThread extends Thread
 				return;
 			}
 
-			command_json.put("type", ChatClient.TYPE_KICK);
+			command_json.put("type", Config.TYPE_KICK);
 			command_json.put("identity", args[1]);
 			command_json.put("roomid", args[2]);
 			command_json.put("time", new Long(Long.parseLong(args[3])));
@@ -223,7 +225,7 @@ public class WriteThread extends Thread
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_DELETE))
+		if (args[0].equals(Config.TYPE_DELETE))
 		{
 			if (args.length < 2)
 			{
@@ -239,14 +241,14 @@ public class WriteThread extends Thread
 			}
 
 			command_json.put("roomid", args[1]);
-			command_json.put("type", ChatClient.TYPE_DELETE);
+			command_json.put("type", Config.TYPE_DELETE);
 			this.sendNextJson(command_json);
 			return;
 		}
 
-		if (args[0].equals(ChatClient.TYPE_QUIT))
+		if (args[0].equals(Config.TYPE_QUIT))
 		{
-			command_json.put("type", ChatClient.TYPE_QUIT);
+			command_json.put("type", Config.TYPE_QUIT);
 			this.sendNextJson(command_json);// it needs a recognition from
 											// server to disconnect
 			return;
@@ -258,7 +260,7 @@ public class WriteThread extends Thread
 	private void handleMessage(String raw_message)
 	{
 		JSONObject message_json = new JSONObject();
-		message_json.put("type", ChatClient.TYPE_MESSAGE);
+		message_json.put("type", Config.TYPE_MESSAGE);
 		message_json.put("content", raw_message);
 
 		this.sendNextJson(message_json);
@@ -274,12 +276,12 @@ public class WriteThread extends Thread
 
 	private boolean validIdentity(String identity)
 	{
-		return Pattern.matches(ChatClient.VALID_IDENTITY_REX, identity);
+		return Pattern.matches(Config.VALID_IDENTITY_REX, identity);
 	}
 
 	private boolean validRoomId(String room_id)
 	{
-		return Pattern.matches(ChatClient.VALID_ROOM_ID_REX, room_id);
+		return Pattern.matches(Config.VALID_ROOM_ID_REX, room_id);
 	}
 
 }

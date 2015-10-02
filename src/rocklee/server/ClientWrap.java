@@ -6,8 +6,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -17,9 +15,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import com.sun.xml.internal.bind.v2.model.core.ID;
-
-import rocklee.client.ChatClient;
+import rocklee.utility.Config;
 
 /**
  * This class is the wrap for the connection of a single client , and includes
@@ -35,25 +31,10 @@ public class ClientWrap extends Thread
 {
 	// for debug and info, since log4j is thread safe, it can also be used to
 	// record the result and output
-	private static Logger log = Logger.getLogger(ClientWrap.class);
+	private static Logger log = Logger.getLogger(Config.class);
 
 	private static JSONParser json_parser = new JSONParser();
-	public static final String TYPE_NEW_IDENTITY = "newidentity";
-	public static final String TYPE_INDENTITY_CHANGE = "identitychange";
-	public static final String TYPE_JOIN = "join";
-	public static final String TYPE_ROOM_CHANGE = "roomchange";
-	public static final String TYPE_ROOM_CONTENTS = "roomcontents";
-	public static final String TYPE_WHO = "who";
-	public static final String TYPE_LIST = "list";
-	public static final String TYPE_ROOM_LIST = "roomlist";
-	public static final String TYPE_CREATE_ROOM = "createroom";
-	public static final String TYPE_KICK = "kick";
-	public static final String TYPE_DELETE = "delete";
-	public static final String TYPE_MESSAGE = "message";
-	public static final String TYPE_QUIT = "quit";
 
-	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
-	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
 
 	private String indentity = null;// user's identity
 
@@ -240,12 +221,12 @@ public class ClientWrap extends Thread
 
 	private boolean validIdentity(String identity)
 	{
-		return Pattern.matches(ClientWrap.VALID_IDENTITY_REX, identity);
+		return Pattern.matches(Config.VALID_IDENTITY_REX, identity);
 	}
 
 	private boolean validRoomId(String room_id)
 	{
-		return Pattern.matches(ClientWrap.VALID_ROOM_ID_REX, room_id);
+		return Pattern.matches(Config.VALID_ROOM_ID_REX, room_id);
 	}
 
 	// the thread that deals with a single client Connection
@@ -310,7 +291,7 @@ public class ClientWrap extends Thread
 		// =============================================================
 		// TYPE_INDENTITY_CHANGE
 
-		if (request_type.equals(ClientWrap.TYPE_INDENTITY_CHANGE))
+		if (request_type.equals(Config.TYPE_INDENTITY_CHANGE))
 		{
 			// apply to change the identity from client
 
@@ -320,7 +301,7 @@ public class ClientWrap extends Thread
 
 			String msg_identity = (String) msg_json.get("identity");
 
-			response_json.put("type", TYPE_NEW_IDENTITY);
+			response_json.put("type", Config.TYPE_NEW_IDENTITY);
 			String former_id = this.getIdentity();
 			response_json.put("former", former_id);
 
@@ -348,12 +329,12 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_JOIN
-		if (request_type.equals(ClientWrap.TYPE_JOIN))
+		if (request_type.equals(Config.TYPE_JOIN))
 		{
 			String room_id = (String) msg_json.get("roomid");
 			String former = this.chat_room_manager.getRoomId();
 
-			response_json.put("type", TYPE_ROOM_CHANGE);
+			response_json.put("type", Config.TYPE_ROOM_CHANGE);
 			response_json.put("identity", this.getIdentity());
 			response_json.put("former", former);
 
@@ -399,11 +380,11 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_WHO
-		if (request_type.equals(ClientWrap.TYPE_WHO))
+		if (request_type.equals(Config.TYPE_WHO))
 		{
 			String room_id = (String) msg_json.get("roomid");
 
-			response_json.put("type", TYPE_ROOM_CONTENTS);
+			response_json.put("type", Config.TYPE_ROOM_CONTENTS);
 
 			if (!this.validIdentity(room_id)
 					|| !chat_server.roomIdExist(room_id))
@@ -433,11 +414,11 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_LIST
-		if (request_type.equals(ClientWrap.TYPE_LIST))
+		if (request_type.equals(Config.TYPE_LIST))
 		{
 			response_json = this.chat_server.getRoomListJson();
 
-			response_json.put("type", TYPE_ROOM_LIST);
+			response_json.put("type", Config.TYPE_ROOM_LIST);
 
 			this.sendNextMessage(response_json.toJSONString());
 
@@ -446,11 +427,11 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_CREATE_ROOM
-		if (request_type.equals(ClientWrap.TYPE_CREATE_ROOM))
+		if (request_type.equals(Config.TYPE_CREATE_ROOM))
 		{
 			String room_id = (String) msg_json.get("roomid");
 
-			response_json.put("type", TYPE_ROOM_LIST);
+			response_json.put("type", Config.TYPE_ROOM_LIST);
 
 			if (!this.validIdentity(room_id)
 					|| chat_server.roomIdExist(room_id))
@@ -470,7 +451,7 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_KICK
-		if (request_type.equals(ClientWrap.TYPE_KICK))
+		if (request_type.equals(Config.TYPE_KICK))
 		{
 			String room_id = (String) msg_json.get("roomid");
 			ChatRoomManager target_room = null;
@@ -495,7 +476,7 @@ public class ClientWrap extends Thread
 				this.chat_room_manager.banIdentity(target_client, deadline);
 
 				// inform everyone of the change
-				response_json.put("type", TYPE_ROOM_CHANGE);
+				response_json.put("type", Config.TYPE_ROOM_CHANGE);
 				response_json.put("identity", target_client.getIdentity());
 				response_json.put("former", this.chat_room_manager.getRoomId());
 				response_json.put("roomid", "MainHall");
@@ -515,7 +496,7 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_DELETE
-		if (request_type.equals(ClientWrap.TYPE_DELETE))
+		if (request_type.equals(Config.TYPE_DELETE))
 		{
 			String room_id = (String) msg_json.get("roomid");
 			ChatRoomManager target_room = null;
@@ -543,10 +524,10 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_MESSAGE
-		if (request_type.equals(ClientWrap.TYPE_MESSAGE))
+		if (request_type.equals(Config.TYPE_MESSAGE))
 		{
 			String content = (String) msg_json.get("content");
-			response_json.put("type", TYPE_MESSAGE);
+			response_json.put("type", Config.TYPE_MESSAGE);
 			response_json.put("identity", this.getIdentity());
 			response_json.put("content", content);
 
@@ -556,10 +537,10 @@ public class ClientWrap extends Thread
 
 		// =============================================================
 		// TYPE_QUIT
-		if (request_type.equals(ClientWrap.TYPE_QUIT))
+		if (request_type.equals(Config.TYPE_QUIT))
 		{
 			// inform everyone of the change
-			response_json.put("type", TYPE_ROOM_CHANGE);
+			response_json.put("type", Config.TYPE_ROOM_CHANGE);
 			response_json.put("identity", this.getIdentity());
 			response_json.put("former", this.chat_room_manager.getRoomId());
 			response_json.put("roomid", "");
