@@ -69,8 +69,7 @@ public class ReadThread extends Thread
 	public void handleResponse(String raw_input)
 	{
 		JSONObject response_json = null;
-//		System.out.println(raw_input);
-		
+
 		try
 		{
 			response_json = (JSONObject) json_parser.parse(raw_input);
@@ -82,160 +81,189 @@ public class ReadThread extends Thread
 
 		String type = (String) response_json.get("type");
 
-		// =========================================================
-		// new identity
-		if (type.equals(ChatClient.TYPE_NEW_IDENTITY))
+		switch (type)
 		{
-			String former = (String) response_json.get("former");
-			String identity = (String) response_json.get("identity");
-			if (former == null || former.equals(""))
-			{
-				// first welcome message from server, get the new name from
-				// server as
-				// guest#
-				log.debug("Connected to localhost as " + identity);
-				System.out.println("Connected to localhost as " + identity);
-			}
+		case ChatClient.TYPE_NEW_IDENTITY:
+			this.handleType_new_identity(response_json);
+			break;
 
-			else
-			{
-				if (former.equals(identity)
-						&& former.equals(this.chat_client.getIdentity()))
-				{// identity remains the same
-					log.debug("Requested identity invalid or in use");
-					System.out.println("Requested identity invalid or in use");
-					return;
-				}
-				log.debug(former + " now is " + identity);
-				System.out.println(former + " now is " + identity);
-			}
+		case ChatClient.TYPE_ROOM_CHANGE:
+			this.handleType_room_change(response_json);
+			break;
+		case ChatClient.TYPE_ROOM_CONTENTS:
+			this.handleType_room_contents(response_json);
+			break;
 
-			this.chat_client.setIdentity(identity);
-			return;
+		case ChatClient.TYPE_ROOM_LIST:
+			this.handleType_room_list(response_json);
+			break;
+
+		case ChatClient.TYPE_MESSAGE:
+			this.handleType_message(response_json);
+			break;
+
+		default:
+			System.out.println("Something went wrong with the TYPE given!!!");
+			;
 		}
 
-		// ==========================================================
-		// room change
-		if (type.equals(ChatClient.TYPE_ROOM_CHANGE))
+	}
+
+	private boolean handleType_new_identity(JSONObject response_json)
+	{
+		String former = (String) response_json.get("former");
+		String identity = (String) response_json.get("identity");
+		if (former == null || former.equals(""))
 		{
-			String identity = (String) response_json.get("identity");
-			String former = (String) response_json.get("former");
-			String room_id = (String) response_json.get("roomid");
-			if ((former == null || former.equals(""))
-					&& room_id.equals("MainHall"))
-			{
-				// just connect to server, move from "nowhere" to main hall
-				log.debug(identity + " moves to MainHall");
-				System.out.println(identity + " moves to MainHall");
-				this.chat_client.setRoomId("MainHall");
-				return;
-			}
+			// first welcome message from server, get the new name from
+			// server as
+			// guest#
+			log.debug("Connected to localhost as " + identity);
+			System.out.println("Connected to localhost as " + identity);
+		}
 
-			if (room_id == null || room_id.equals(""))
-			{
-				// the destination is empty, indicates that user is going to
-				// disconnect
-				log.debug(identity + " leaves MainHall");
-				System.out.println(identity + " leaves MainHall");
-
-				if (this.chat_client.getIdentity().equals(identity))
-				{// this client is going to disconnect itself
-					this.chat_client.setOnline(false);
-				}
-
-				return;
-			}
-
+		else
+		{
 			if (former.equals(identity)
 					&& former.equals(this.chat_client.getIdentity()))
-			{// room id remains the same
-				log.debug("The requested room is invalid or non existent.");
-				System.out
-						.println("The requested room is invalid or non existent.");
-				return;
+			{// identity remains the same
+				log.debug("Requested identity invalid or in use");
+				System.out.println("Requested identity invalid or in use");
+				return false;
 			}
-			System.out.println(identity + " moves from " + former + " to "
-					+ room_id);
-			this.chat_client.setRoomId(room_id);
-			return;
+			log.debug(former + " now is " + identity);
+			System.out.println(former + " now is " + identity);
 		}
 
-		// ==========================================================
-		// room contents
-		if (type.equals(ChatClient.TYPE_ROOM_CONTENTS))
+		this.chat_client.setIdentity(identity);
+		return true;
+	}
+
+	private boolean handleType_room_change(JSONObject response_json)
+	{
+		String identity = (String) response_json.get("identity");
+		String former = (String) response_json.get("former");
+		String room_id = (String) response_json.get("roomid");
+		if ((former == null || former.equals("")) && room_id.equals("MainHall"))
 		{
+			// just connect to server, move from "nowhere" to main hall
+			log.debug(identity + " moves to MainHall");
+			System.out.println(identity + " moves to MainHall");
+			this.chat_client.setRoomId("MainHall");
+			return true;
+		}
 
-			String room_id = (String) response_json.get("roomid");
-			JSONArray identities = (JSONArray) response_json.get("identities");
-			String owner = (String) response_json.get("owner");
+		if (room_id == null || room_id.equals(""))
+		{
+			// the destination is empty, indicates that user is going to
+			// disconnect
+			log.debug(identity + " leaves MainHall");
+			System.out.println(identity + " leaves MainHall");
 
-			String name_list = room_id + " contains";
-			for (int i = 0; i < identities.size(); i++)
+			if (this.chat_client.getIdentity().equals(identity))
+			{// this client is going to disconnect itself
+				this.chat_client.setOnline(false);
+			}
+
+			return true;
+		}
+
+		if (former.equals(identity)
+				&& former.equals(this.chat_client.getIdentity()))
+		{// room id remains the same
+			log.debug("The requested room is invalid or non existent.");
+			System.out
+					.println("The requested room is invalid or non existent.");
+			return false;
+		}
+
+		// basic case, move from one room to another
+		System.out.println(identity + " moves from " + former + " to "
+				+ room_id);
+		this.chat_client.setRoomId(room_id);
+		return true;
+	}
+
+	private boolean handleType_room_contents(JSONObject response_json)
+	{
+		String room_id = (String) response_json.get("roomid");
+		JSONArray identities = (JSONArray) response_json.get("identities");
+		String owner = (String) response_json.get("owner");
+
+		String name_list = room_id + " contains";
+
+		// print the information of this room
+		for (int i = 0; i < identities.size(); i++)
+		{
+			String tmp_name = (String) identities.get(i);
+			if (tmp_name.equals(owner))
+				tmp_name += "*";
+			name_list += (" " + tmp_name);
+		}
+		System.out.println(name_list);
+		return true;
+	}
+
+	private boolean handleType_room_list(JSONObject response_json)
+	{
+		boolean found = false;
+		JSONArray rooms = (JSONArray) response_json.get("rooms");
+
+		String request_room_name = this.chat_client.getRequestNewRoomId();
+
+		// we are not request any room to be created
+		// so we just print the existing room id and number of people inside
+		if (!(request_room_name == null || request_room_name.equals("")))
+		{
+			for (int i = 0; i < rooms.size(); i++)
 			{
-				String tmp_name = (String) identities.get(i);
-				if (tmp_name.equals(owner))
-					tmp_name += "*";
-				name_list += (" " + tmp_name);
+				JSONObject room_json_obj = (JSONObject) rooms.get(i);
+				System.out.println((String) room_json_obj.get("roomid") + ": "
+						+ (Long) room_json_obj.get("count"));
 			}
-			System.out.println(name_list);
-			return;
-		}
-
-		// ==========================================================
-		// room list
-		if (type.equals(ChatClient.TYPE_ROOM_LIST))
+			return true;
+		} else
 		{
-
-			boolean found=false;
-			JSONArray rooms = (JSONArray) response_json.get("rooms");
-
-			String request_room_name = this.chat_client.getRequestNewRoomId();
+			// we have sent our "creating request"
 			for (int i = 0; i < rooms.size(); i++)
 			{
 				JSONObject room = (JSONObject) rooms.get(i);
-				if (((String) room.get("roomid")).equals(this.chat_client
-						.getRequestNewRoomId()))
+				if (((String) room.get("roomid")).equals(request_room_name))
 				{
-					found=true;
+					// the room we request to create now appears on the list
+					// we can assume that the operation is a success
+					found = true;
 					log.debug("Room " + request_room_name + " created");
 					System.out
 							.println("Room " + request_room_name + " created");
 					this.chat_client.setRequestNewRoomId("");
-					return;
+					break;
 				}
 			}
 
-			//we are looking for new created room,yet not found 
-			if (!found&&!(request_room_name == null || request_room_name.equals("")))
+			if (!found)
 			{
+				// code reaches here , the request has not successully created a
+				// new room
 				log.debug("Room " + this.chat_client.getRequestNewRoomId()
 						+ " is invalid or already in use.");
 				System.out.println("Room "
 						+ this.chat_client.getRequestNewRoomId()
 						+ " is invalid or already in use.");
-				return;
-			}
-			
-			if(!found)
-			{
-				for (int i = 0; i < rooms.size(); i++)
-				{
-					JSONObject room_json_obj = (JSONObject) rooms.get(i);
-					System.out.println((String) room_json_obj.get("roomid")
-							+ ": " + (Long) room_json_obj.get("count"));
-				}
-			}
 
-		}
-
-		// ==========================================================
-		// message
-		if (type.equals(ChatClient.TYPE_MESSAGE))
-		{
-			String identity = (String) response_json.get("identity");
-			String content = (String) response_json.get("content");
-			System.out.println(identity + ": " + content);
+			}
+			this.chat_client.setRequestNewRoomId("");
+			return found;
 		}
 
 	}
+
+	private boolean handleType_message(JSONObject response_json)
+	{
+		String identity = (String) response_json.get("identity");
+		String content = (String) response_json.get("content");
+		System.out.println(identity + ": " + content);
+		return true;
+	}
+
 }
