@@ -191,7 +191,7 @@ public class WriteThread extends Thread
 		}
 
 		if (args[0].equals(Config.TYPE_KICK))
-		{// TODO kick command
+		{
 			if (args.length < 4)
 			{
 				log.debug("not enough parameters are given! plz Check input format!");
@@ -205,12 +205,6 @@ public class WriteThread extends Thread
 			}
 
 			if (!this.validRoomId(args[2]))
-			{
-				System.out.println("RoomId " + args[1] + " is invalid.");
-				return;
-			}
-
-			if (!this.validRoomId(args[3]))
 			{
 				System.out.println("RoomId " + args[1] + " is invalid.");
 				return;

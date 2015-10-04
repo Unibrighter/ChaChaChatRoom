@@ -20,10 +20,17 @@ public class ChatServer
 	private ServerSocket serverSocket = null;
 
 	public static final String MAIN_HALL_NAME = "MainHall";
+	
+	//main hall has to be set up as the server starts
 	public ChatRoomManager main_hall = null;
+	
 	private Vector<ChatRoomManager> room_list = null;
+	
+	//this list supports the operation to main the users 
+	//who have registered their identity
+	private Vector<UserProfile> user_list=null;
 
-	// this number indicates that how many users are using names like "guest###"
+	// this number indicates that how many users are using names like "guest####"
 	private static final int MAX_GUEST_NUM = 1000;
 
 	// this is used to keep track of the next minimum possible index number
@@ -56,6 +63,9 @@ public class ChatServer
 		main_hall = new ChatRoomManager(MAIN_HALL_NAME, null);
 
 		// set up the lists for chat room
+		this.user_list= new Vector<UserProfile>();
+		
+		// set up the lists for chat room
 		this.room_list = new Vector<ChatRoomManager>();
 
 		// add it to the chat room list
@@ -75,10 +85,11 @@ public class ChatServer
 				e.printStackTrace();
 			}
 
+			//TODO We have to do some work here to before the client really starts
 			
 			ClientWrap new_client = new ClientWrap(socket, this.getNextGuestName());
 
-			System.out.println("new client!!!!!"+new_client.getIdentity());
+			System.out.println("New client Connected!!!"+new_client.getIdentity());
 			// inform the client of the new name
 			JSONObject connect_new_id = new JSONObject();
 			connect_new_id.put("type", "newidentity");
@@ -130,9 +141,9 @@ public class ChatServer
 		return null;
 	}
 
-	public synchronized boolean addChatRoom(String room_id, ClientWrap client)
+	public synchronized boolean addChatRoom(String room_id, UserProfile owner)
 	{
-		ChatRoomManager tmp = new ChatRoomManager(room_id, client);
+		ChatRoomManager tmp = new ChatRoomManager(room_id, owner);
 		return this.room_list.add(tmp);
 	}
 
@@ -175,20 +186,6 @@ public class ChatServer
 		return ("guest" + index);
 
 	}
-
-	// check all the users' names online, to see if a given identity already
-	// exists
-	public boolean identityExist(String identity)
-	{
-		Vector<String> allIdentities = new Vector<String>();
-
-		for (int i = 0; i < this.room_list.size(); i++)
-		{
-			allIdentities.addAll(this.room_list.get(i).getRoomMembers());
-		}
-
-		return (allIdentities.contains(identity));
-	}
 	
 	public boolean roomIdExist(String room_id)
 	{
@@ -225,6 +222,31 @@ public class ChatServer
 		return response_json;
 	}
 	
+	public UserProfile getUserByIdentity(String identity)
+	{
+		for (int i = 0; i < user_list.size(); i++)
+		{
+			UserProfile tmpUser= user_list.get(i);
+			if(tmpUser.getUserIdentity().equals(identity))
+			{
+				return tmpUser;
+			}
+		}
+		return null;
+	}
+	
+	public UserProfile getUserByNum(long user_num)
+	{
+		for (int i = 0; i < user_list.size(); i++)
+		{
+			UserProfile tmpUser= user_list.get(i);
+			if(tmpUser.getUserNum()==user_num)
+			{
+				return tmpUser;
+			}
+		}
+		return null;
+	}
 
 	public static void main(String[] args)
 	{
@@ -237,6 +259,11 @@ public class ChatServer
 		
 		ChatServer chatServer = new ChatServer(port);
 		chatServer.startService();
+	}
+
+	public boolean identityExist(String identity)
+	{
+		return this.getUserByIdentity(identity)!=null;
 	}
 
 }

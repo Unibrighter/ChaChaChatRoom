@@ -9,6 +9,8 @@ import java.net.SocketException;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
+import javax.jws.soap.SOAPBinding.Use;
+
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -36,29 +38,32 @@ public class ClientWrap extends Thread
 
 	private static JSONParser json_parser = new JSONParser();
 
-	// TODO replace the usage of identity with an instance of UserDetail
 	private UserProfile user = null;
-	private String indentity = null;// user's identity
 
 	private ChatRoomManager chat_room_manager = null;
 	private ChatServer chat_server = null;
 
+	//socket and stream
 	private Socket socket = null;
 	private BufferedReader input = null;
 	private PrintWriter output = null;
 
 	private boolean online = true;
 
+	public boolean isOnline()
+	{
+		return this.online;
+	}
+	
 	public void setOnline(boolean online)
 	{
 		this.online = online;
 	}
 
-	public ClientWrap(Socket socket, String name)
+	public ClientWrap(Socket socket, UserProfile user)
 	{
 		this(socket);
-		this.switchIdentity(name);
-
+		this.user=user;
 	}
 
 	public ClientWrap(Socket socket)
@@ -109,13 +114,6 @@ public class ClientWrap extends Thread
 			Vector<ChatRoomManager> room_list = this.chat_server
 					.getChatRoomList();
 
-			// reset the chat rooms which belonged to this owner
-			for (int i = 0; i < room_list.size(); i++)
-			{
-				if (room_list.get(i).getRoomOwner().equals(this.getIdentity()))
-					room_list.get(i).setRoomOwner(null);
-			}
-
 			this.chat_room_manager.removeClient(this);
 
 			this.setOnline(false);
@@ -131,24 +129,24 @@ public class ClientWrap extends Thread
 	}
 
 	// get the identity for the client at the Server side
-	public String getIdentity()
+	public UserProfile getUserProfile()
 	{
-		return this.indentity;
+		return this.user;
 	}
+	
 
-	// TODO use an instance of UserDetail inside to complete this operation
 	// set the new identity for the client at the Server side
-	public void switchIdentity(String indentity)
+	public void switchIdentity(String identity)
 	{
-		String former_id = this.indentity;
-		this.indentity = indentity;
+		String former_id = this.user.getUserIdentity();
+		this.user.setUserIdentity(identity);
 
 		if (former_id == null || former_id.equals(""))
 		{
 			return;
 		}
 
-		// check if it's a "guest name"
+		// check if the older identity was a "guest name"
 		if (Pattern.matches("^guest[1-9]\\d*$", former_id))
 		{
 			int index = Integer.parseInt(former_id.substring(5));
@@ -157,7 +155,7 @@ public class ClientWrap extends Thread
 
 	}
 
-	// join one given chat room ,if already in other room ,then return false;
+	// join one given chat room, and then leave the original one
 	public boolean switchChatRoom(ChatRoomManager targetRoom)
 	{
 		// if the targetRoom does not exist ,return false
@@ -165,29 +163,20 @@ public class ClientWrap extends Thread
 			return false;
 
 		// still being banned
-		if (targetRoom.BlockedUserByName(this))
+		if (targetRoom.hasBannedUserNum(this.user.getUserNum()))
 			return false;
 
 		ChatRoomManager original_room = this.chat_room_manager;
 
-		// add the client to the new chat room before leave the original
+		// add the client to the new chat room before leaving the original
 		this.chat_room_manager = targetRoom;
 
 		this.chat_room_manager.addClient(this);
 
-		// delete the client from the original chat room list, if original room
-		// is nowhere ,it will be set as null
+		// delete the client from the original chat room list
 		if (original_room != null)
 		{
-
-			boolean result = original_room.removeClient(this);
-			if (original_room.getRoomOwner().equals("")
-					&& original_room.getGuestNum() == 0
-					&& !original_room.getRoomId().equals("MainHall"))
-			{// now the room is empty
-				this.chat_server.removeChatRoomById(original_room.getRoomId());
-			}
-			return result;
+			return original_room.removeClient(this);
 		}
 
 		else
@@ -196,14 +185,15 @@ public class ClientWrap extends Thread
 			return true;
 
 	}
+	
 
-	// overwrite this to support vector.contains(obj)
-	// if the identity are the same, then we consider the two instances of
-	// ClientWrap are the same
+	// if the two instances of ClientWrap have the same UserProfile 
+	// then we consider it's the same clientWrap
+	//this method is override for Vector<ClientWrap>.contain
 	@Override
 	public boolean equals(Object obj)
 	{
-		return this.getIdentity().equals(((ClientWrap) obj).getIdentity());
+		return this.user.getUserNum()==((UserProfile)obj).getUserNum();
 	}
 
 	// the thread that deals with a single client Connection
@@ -218,11 +208,12 @@ public class ClientWrap extends Thread
 			while (online)
 			{// block and will wait for the input from client
 
+				//TODO here it would be processed to get plain text by security module first
 				if ((input_from_client = input.readLine()) != null)
 				{
 					// see what the client message says and act accordingly
 					JSONObject msg_json = null;
-					log.warn(this.getIdentity() + ">>>>>" + input_from_client);
+					log.warn(this.user.getUserIdentity() + ">>>>>" + input_from_client);
 
 					this.handleRequest(input_from_client);
 
@@ -233,6 +224,7 @@ public class ClientWrap extends Thread
 		} catch (SocketException e)
 		{
 
+			log.warn("The connection has been cut because of the SocketException!!!");
 			this.handleRequest("{\"type\":\"quit\"}");
 
 		}
@@ -304,7 +296,7 @@ public class ClientWrap extends Thread
 		String msg_identity = (String) msg_json.get("identity");
 
 		response_json.put("type", Config.TYPE_NEW_IDENTITY);
-		String former_id = this.getIdentity();
+		String former_id = this.user.getUserIdentity();
 		response_json.put("former", former_id);
 
 		if (!Config.validIdentity(msg_identity)
@@ -336,7 +328,7 @@ public class ClientWrap extends Thread
 		String former = this.chat_room_manager.getRoomId();
 
 		response_json.put("type", Config.TYPE_ROOM_CHANGE);
-		response_json.put("identity", this.getIdentity());
+		response_json.put("identity", this.user.getUserIdentity());
 		response_json.put("former", former);
 
 		if (!Config.validIdentity(room_id) || !chat_server.roomIdExist(room_id))
@@ -430,9 +422,8 @@ public class ClientWrap extends Thread
 			return false;
 
 		} else
-		{// successful create
-
-			this.chat_server.addChatRoom(room_id, this);
+		{// successful created a new room
+			this.chat_server.addChatRoom(room_id, this.user);
 			response_json = this.chat_server.getRoomListJson();
 			this.sendNextMessage(response_json.toJSONString());
 			return true;
@@ -445,31 +436,29 @@ public class ClientWrap extends Thread
 		String room_id = (String) msg_json.get("roomid");
 		ChatRoomManager target_room = null;
 
-		// TODO this Authentication needs to use UserProfile
-		// authenticate the right to do so
+		// no such a room under the given name
 		if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
 			return false;
 
-		// TODO this Authentication needs to use UserProfile
-		if (this.getIdentity().equals(target_room.getRoomOwner()))
+		// the user who sends the command has the owner's number, it's the right person
+		if (this.user.getUserNum()==(target_room.getRoomOwner().getUserNum()))
 		{
 			Long time = (Long) msg_json.get("time");
 			String msg_identity = (String) msg_json.get("identity");
 
 			// get the client who is going to be kicked
-			ClientWrap target_client = this.chat_room_manager
-					.getClientWarpByName(msg_identity);
-
-			// TODO black list here should use a map of <UserProfile,Long>
-			if (target_client == null)
+			UserProfile user_to_be_kicked= this.chat_server.getUserByIdentity(msg_identity);
+			
+			//this user does not exist or not in the right room
+			if (user_to_be_kicked == null||!user_to_be_kicked.getCurrentRoomId().equals(target_room))
 				return false;
 
 			long deadline = System.currentTimeMillis() + time;
-			this.chat_room_manager.banIdentity(target_client, deadline);
+			this.chat_room_manager.banUserByNum(user_to_be_kicked.getUserNum(), deadline);
 
 			// inform everyone of the change
 			response_json.put("type", Config.TYPE_ROOM_CHANGE);
-			response_json.put("identity", target_client.getIdentity());
+			response_json.put("identity", user_to_be_kicked.getUserIdentity());
 			response_json.put("former", this.chat_room_manager.getRoomId());
 			response_json.put("roomid", "MainHall");
 
@@ -477,7 +466,8 @@ public class ClientWrap extends Thread
 					.toJSONString());
 
 			// chatroom switch
-			target_client.switchChatRoom(chat_server.main_hall);
+			ClientWrap clientWarp=this.chat_room_manager.getClientWrapByUserProfile(user_to_be_kicked);
+			clientWarp.switchChatRoom(chat_server.main_hall);
 
 			return true;
 		}
@@ -496,8 +486,7 @@ public class ClientWrap extends Thread
 		if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
 			return false;
 
-		// TODO this Authentication needs to use UserProfile
-		if (this.getIdentity().equals(target_room.getRoomOwner()))
+		if (this.user.getUserNum()==(target_room.getRoomOwner().getUserNum()))
 		{
 			Vector<ClientWrap> people_inside = target_room.getAllClients();
 
@@ -519,7 +508,7 @@ public class ClientWrap extends Thread
 		JSONObject response_json = new JSONObject();
 		String content = (String) msg_json.get("content");
 		response_json.put("type", Config.TYPE_MESSAGE);
-		response_json.put("identity", this.getIdentity());
+		response_json.put("identity", this.user.getUserIdentity());
 		response_json.put("content", content);
 
 		this.chat_room_manager.broadCastMessage(response_json.toJSONString());
@@ -532,7 +521,7 @@ public class ClientWrap extends Thread
 
 		// inform everyone of the change
 		response_json.put("type", Config.TYPE_ROOM_CHANGE);
-		response_json.put("identity", this.getIdentity());
+		response_json.put("identity", this.user.getUserIdentity());
 		response_json.put("former", this.chat_room_manager.getRoomId());
 		response_json.put("roomid", "");
 

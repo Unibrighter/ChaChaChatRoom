@@ -8,6 +8,9 @@ import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import rocklee.utility.UserProfile;
+import sun.rmi.server.UnicastServerRef;
+
 import com.sun.security.ntlm.Client;
 
 /**
@@ -31,21 +34,20 @@ public class ChatRoomManager
 	private static Logger log = Logger.getLogger(ChatRoomManager.class);
 
 	private String room_id = null;
-	private ClientWrap room_owner = null;
+	private UserProfile room_owner = null;
 
 	// the collection of the clients in this chat room
 	private Vector<ClientWrap> client_list = null;
 
-	private Map<ClientWrap, Long> black_list = new HashMap<ClientWrap, Long>();
+	private Map<Long, Long> black_list = new HashMap<Long, Long>();
 	
-	public ChatRoomManager(String id, ClientWrap owner)
+	public ChatRoomManager(String id, UserProfile owner)
 	{
-
 		this.room_id = id;
 		this.room_owner = owner;
 		client_list = new Vector<ClientWrap>();
 		log.debug("New Chat Room Established!! roomid: " + id + "\townerid:"
-				+ (owner!=null?owner.getIdentity():""));
+				+ (owner!=null?owner.getUserIdentity():""));
 	}
 
 	// this method needs to be set as synchronized so that the case two thread
@@ -78,24 +80,6 @@ public class ChatRoomManager
 
 	}
 
-	// tell whether this room has a user with a given identity or not
-	public boolean contains(String client_identity)
-	{
-		ClientWrap dummy = new ClientWrap(null, client_identity);
-		return this.client_list.contains(dummy);
-	}
-	
-	public ClientWrap getClientWarpByName(String name)
-	{
-		for (int i = 0; i < client_list.size(); i++)
-		{
-			ClientWrap tmp=this.client_list.get(i);
-			if(tmp.getIdentity().equals(name))
-			return tmp;
-		}
-		return null;
-	}
-	
 
 	public String getRoomId()
 	{
@@ -104,17 +88,16 @@ public class ChatRoomManager
 
 	// if there is no client who takes charge of this room ,then return ""
 	// indicating that there is no owner
-	public String getRoomOwner()
+	public UserProfile getRoomOwner()
 	{
-		return this.room_owner == null ? "" : this.room_owner.getIdentity();
+		return this.room_owner;
 	}
 
-	public void setRoomOwner(ClientWrap client)
+	public void setRoomOwner(UserProfile owner)
 	{
-		this.room_owner=client;
+		this.room_owner=owner;
 	}
-	
-	
+		
 	// return the collection of room member ,including the room owner
 	public Vector<String> getRoomMembers()
 	{
@@ -122,7 +105,7 @@ public class ChatRoomManager
 		
 		for (int i = 0; i < this.client_list.size(); i++)
 		{
-			result.add(this.client_list.get(i).getIdentity());
+			result.add(this.client_list.get(i).getUserProfile().getUserIdentity());
 		}
 		return result.isEmpty()?null:result;
 	}
@@ -147,16 +130,16 @@ public class ChatRoomManager
 		return black_list.containsKey(name);
 	}
 	
-	public void banIdentity(ClientWrap name,long deadline)
+	public void banUserByNum(Long user_num,long deadline)
 	{
-		black_list.put(name, deadline);
+		black_list.put(user_num, deadline);
 	}
 	
-	public boolean BlockedUserByName(ClientWrap name)
+	public boolean hasBannedUserNum(Long user_num)
 	{
-		if(this.black_list.containsKey(name))
+		if(this.black_list.containsKey(user_num))
 		{
-			return black_list.get(name)<=System.currentTimeMillis();
+			return black_list.get(user_num)<=System.currentTimeMillis();
 		}
 		else return false;
 	}
@@ -165,4 +148,17 @@ public class ChatRoomManager
 	{
 		return this.client_list;
 	}
+	
+	public ClientWrap getClientWrapByUserProfile(UserProfile user)
+	{
+		long user_num=user.getUserNum();
+		for (int i = 0; i < client_list.size(); i++)
+		{
+			ClientWrap tmpUser=client_list.get(i);
+			if(tmpUser.getUserProfile().getUserNum()==user_num)
+				return tmpUser;
+		}
+		return null;
+	}
+
 }
