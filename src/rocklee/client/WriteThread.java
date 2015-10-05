@@ -1,13 +1,17 @@
 package rocklee.client;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 
+import rocklee.security.DESUtil;
+import rocklee.security.RSAUtil;
 import rocklee.utility.Config;
 
 import com.sun.org.apache.bcel.internal.generic.L2D;
@@ -34,6 +38,14 @@ public class WriteThread extends Thread
 	{
 		this.socket = socket;
 		this.chat_client = client;
+		try
+		{
+			this.os = new PrintWriter(socket.getOutputStream());
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+		this.scanner = new Scanner(System.in);
 
 	}
 
@@ -47,11 +59,9 @@ public class WriteThread extends Thread
 	public void run()
 	{
 		try
-		{	this.sleep(1000);
-			
-			this.os = new PrintWriter(socket.getOutputStream());
-			this.scanner = new Scanner(System.in);
-			
+		{
+			this.sleep(2000);
+
 			String readline = scanner.nextLine();
 			System.out.println();
 			while (this.chat_client.isOnline() && readline != null)
@@ -69,6 +79,47 @@ public class WriteThread extends Thread
 		{
 			e.printStackTrace();
 		}
+	}
+
+	public String sendRSAAuthenticationRequest()
+	{
+		JSONObject rsa_verify_json = new JSONObject();
+
+		// get current Time stamp as the random string
+		String time_stamp = "" + System.currentTimeMillis();
+
+		rsa_verify_json.put("type", Config.TYPE_RSA_VERIFY);
+		rsa_verify_json.put("content", time_stamp);
+
+		// encrypt the message
+		String json_encrypt = RSAUtil.encryptUsingPublicKey(
+				this.chat_client.getRSAPublicKey(),
+				rsa_verify_json.toJSONString());
+
+		this.sendNextMessage(json_encrypt);
+
+		return RSAUtil.stringMD5(time_stamp);
+
+	}
+
+	public void sendLoginRequest()
+	{
+		JSONObject login_json = new JSONObject();
+
+		// set up the session key
+		String session_key_root = DESUtil.randomString(64);
+		this.chat_client.setSessionKey(session_key_root);
+
+		login_json.put("type", Config.TYPE_LOGIN);
+		login_json.put("identity", this.chat_client.getIdentity());
+		login_json.put("password",
+				RSAUtil.stringMD5(this.chat_client.getPassword()));
+		login_json.put("sessionkey", session_key_root);
+
+		String cipher_output = RSAUtil.decryptUsingPublicKey(
+				this.chat_client.getRSAPublicKey(), login_json.toJSONString());
+
+		this.sendNextMessage(cipher_output);
 	}
 
 	private void handInput(String raw_input)
@@ -116,7 +167,7 @@ public class WriteThread extends Thread
 
 			command_json.put("identity", args[1]);
 
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
@@ -132,7 +183,7 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
@@ -148,7 +199,7 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
@@ -172,21 +223,21 @@ public class WriteThread extends Thread
 			command_json.put("roomid", args[1]);
 			this.chat_client.setRequestNewRoomId(args[1]);
 
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_LIST))
 		{
 			command_json.put("type", Config.TYPE_LIST);
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_CREATE_ROOM))
 		{
 			command_json.put("type", Config.TYPE_CREATE_ROOM);
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
@@ -215,7 +266,7 @@ public class WriteThread extends Thread
 			command_json.put("roomid", args[2]);
 			command_json.put("time", new Long(Long.parseLong(args[3])));
 
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
@@ -236,15 +287,16 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 			command_json.put("type", Config.TYPE_DELETE);
-			this.sendNextJson(command_json);
+			this.sendNextMessage(command_json.toString());
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_QUIT))
 		{
 			command_json.put("type", Config.TYPE_QUIT);
-			this.sendNextJson(command_json);// it needs a recognition from
-											// server to disconnect
+			this.sendNextMessage(command_json.toString());// it needs a
+															// recognition from
+			// server to disconnect
 			return;
 		}
 
@@ -257,14 +309,13 @@ public class WriteThread extends Thread
 		message_json.put("type", Config.TYPE_MESSAGE);
 		message_json.put("content", raw_message);
 
-		this.sendNextJson(message_json);
+		this.sendNextMessage(message_json.toString());
 
 	}
 
-	private void sendNextJson(JSONObject json_obj)
+	private void sendNextMessage(String msg)
 	{
-		this.log.debug(json_obj);
-		this.os.println(json_obj.toJSONString());
+		this.os.println(msg);
 		this.os.flush();
 	}
 

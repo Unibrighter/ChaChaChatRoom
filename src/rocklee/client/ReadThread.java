@@ -1,6 +1,7 @@
 package rocklee.client;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
@@ -10,6 +11,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import rocklee.security.DESUtil;
+import rocklee.security.RSAUtil;
 import rocklee.utility.Config;
 
 /**
@@ -41,6 +44,97 @@ public class ReadThread extends Thread
 		this.socket = socket;
 		this.chat_client = client;
 		this.json_parser = new JSONParser();
+		try
+		{
+			this.is = new BufferedReader(new InputStreamReader(
+					socket.getInputStream()));
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public String getMD5HashSignature()
+	{
+		JSONObject response_json = null;
+		try
+		{
+
+			String cipher_input = is.readLine();
+
+			response_json = (JSONObject) json_parser.parse(RSAUtil
+					.decryptUsingPublicKey(this.chat_client.getRSAPublicKey(),
+							cipher_input));
+
+		} catch (ParseException e)
+		{
+			log.error("Some thing wrong with the responding signature!!!");
+			e.printStackTrace();
+			System.exit(-1);
+		} catch (IOException e)
+		{
+			log.error("Something wrong with the connection!!");
+			e.printStackTrace();
+			System.exit(-2);
+		}
+
+		String type = (String) response_json.get("type");
+
+		if (!type.equals(Config.TYPE_SIGNATURE))
+		{
+			log.error("Not correct responding with a signature!!!");
+			return null;
+		} else
+
+			return (String) response_json.get("content");
+
+	}
+
+	public boolean getLoginResult()
+	{
+		JSONObject response_json = null;
+		String cipher_input = null;
+		try
+		{
+			cipher_input = is.readLine();
+			String plain_input = DESUtil.decrypt(cipher_input,
+					this.chat_client.getSessionKey());
+
+			response_json = (JSONObject) json_parser.parse(plain_input);
+			
+
+		} catch (ParseException e)
+		{
+			e.printStackTrace();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+
+		String type = (String) response_json.get("type");
+		String identity = (String) response_json.get("identity");
+		
+		if (type.equals(Config.TYPE_LOGIN_SUCCESS))
+		{
+			this.chat_client.setIdentity(identity);
+			log.debug("Connected to localhost as " + identity);
+			System.out.println("Connected to localhost as " + identity);			
+			return true;
+		} else if (type.equals(Config.TYPE_LOGIN_FAILURE))
+			return false;
+		else
+		{
+			log.error("Not correct responding with a login attempt!!!");
+			return false;
+		}
+	}
+
+	public String getNextLineAsPlainText(String cipherText) throws Exception
+	{
+		return DESUtil.decrypt(cipherText, this.chat_client.getSessionKey());
 	}
 
 	public void run()
@@ -48,16 +142,13 @@ public class ReadThread extends Thread
 		try
 		{
 			String line = "";
-			this.is = new BufferedReader(new InputStreamReader(
-					socket.getInputStream()));
 
-			line = is.readLine();
+			line = this.getNextLineAsPlainText(is.readLine());
 			while (this.chat_client.isOnline() && line != null)
 			{
 
 				this.handleResponse(line);
-				line = is.readLine();
-
+				line = this.getNextLineAsPlainText(is.readLine());
 			}
 
 			is.close();
@@ -114,27 +205,16 @@ public class ReadThread extends Thread
 	{
 		String former = (String) response_json.get("former");
 		String identity = (String) response_json.get("identity");
-		if (former == null || former.equals(""))
-		{
-			// first welcome message from server, get the new name from
-			// server as
-			// guest#
-			log.debug("Connected to localhost as " + identity);
-			System.out.println("Connected to localhost as " + identity);
-		}
 
-		else
-		{
-			if (former.equals(identity)
-					&& former.equals(this.chat_client.getIdentity()))
-			{// identity remains the same
-				log.debug("Requested identity invalid or in use");
-				System.out.println("Requested identity invalid or in use");
-				return false;
-			}
-			log.debug(former + " now is " + identity);
-			System.out.println(former + " now is " + identity);
+		if (former.equals(identity)
+				&& former.equals(this.chat_client.getIdentity()))
+		{// identity remains the same
+			log.debug("Requested identity invalid or in use");
+			System.out.println("Requested identity invalid or in use");
+			return false;
 		}
+		log.debug(former + " now is " + identity);
+		System.out.println(former + " now is " + identity);
 
 		this.chat_client.setIdentity(identity);
 		return true;

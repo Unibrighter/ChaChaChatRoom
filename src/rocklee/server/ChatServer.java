@@ -3,13 +3,18 @@ package rocklee.server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Vector;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import rocklee.security.RSAUtil;
 import rocklee.utility.*;
+
 public class ChatServer
 {
 
@@ -20,18 +25,24 @@ public class ChatServer
 	private ServerSocket serverSocket = null;
 
 	public static final String MAIN_HALL_NAME = "MainHall";
-	
-	//main hall has to be set up as the server starts
-	public ChatRoomManager main_hall = null;
-	
-	private Vector<ChatRoomManager> room_list = null;
-	
-	//this list supports the operation to main the users 
-	//who have registered their identity
-	private Vector<UserProfile> user_list=null;
 
-	// this number indicates that how many users are using names like "guest####"
+	// main hall has to be set up as the server starts
+	public ChatRoomManager main_hall = null;
+
+	private Vector<ChatRoomManager> room_list = null;
+
+	// this list supports the operation to main the users
+	// who have registered their identity
+	private Vector<UserProfile> user_list = null;
+
+	private KeyPair rsa_key_pair = null;
+
+	// this number indicates that how many users are using names like
+	// "guest####"
 	private static final int MAX_GUEST_NUM = 1000;
+	
+	public static int registered_user_count=0;
+	
 
 	// this is used to keep track of the next minimum possible index number
 	private volatile boolean[] guest_name_flag = null;
@@ -63,8 +74,8 @@ public class ChatServer
 		main_hall = new ChatRoomManager(MAIN_HALL_NAME, null);
 
 		// set up the lists for chat room
-		this.user_list= new Vector<UserProfile>();
-		
+		this.user_list = new Vector<UserProfile>();
+
 		// set up the lists for chat room
 		this.room_list = new Vector<ChatRoomManager>();
 
@@ -72,52 +83,57 @@ public class ChatServer
 		this.room_list.add(main_hall);
 	}
 
+	public RSAPrivateKey getRSAPrivateKey()
+	{
+		return (RSAPrivateKey) this.rsa_key_pair.getPrivate();
+	}
+	
+	public RSAPublicKey getRSAPublicKey()
+	{
+		return (RSAPublicKey) this.rsa_key_pair.getPublic();
+	}
+	
 	public void startService()
 	{
+		this.rsa_key_pair=RSAUtil.generateRSAKeyPair("rsa.pub");
+		
 		while (listenning)
 		{
 			Socket socket = null;
 			try
-			{//wait for next connection to start a new thread
+			{// wait for next connection to start a new thread
 				socket = serverSocket.accept();
 			} catch (IOException e)
 			{
 				e.printStackTrace();
 			}
 
-			//TODO We have to do some work here to before the client really starts
-			
-			ClientWrap new_client = new ClientWrap(socket, this.getNextGuestName());
+			//before the login stage , temporary socket
+			ClientWrap new_client = new ClientWrap(socket);
 
-			System.out.println("New client Connected!!!"+new_client.getIdentity());
-			// inform the client of the new name
-			JSONObject connect_new_id = new JSONObject();
-			connect_new_id.put("type", "newidentity");
-			connect_new_id.put("identity", new_client.getIdentity());
-			connect_new_id.put("former", "");
-			
+			new_client.prepareSecureChannel();
+		
+			//set the dummy
 			new_client.setChatSever(this);
-			
+
 			// indicates it comes from nowhere
 			new_client.setChatRoom(null);
-			
+
 			// inform the client of the new name
 			JSONObject connect_new_name = new JSONObject();
 			connect_new_name.put("type", "roomchange");
-			connect_new_name.put("identity", new_client.getIdentity());
+			connect_new_name.put("identity", new_client.getUserProfile().getUserIdentity());
 			connect_new_name.put("former", "");
 			connect_new_name.put("roomid", "MainHall");
-			
+
 			// set the broadcasting channel for this client
 			// and add the new client to the main hall as default
 			new_client.switchChatRoom(main_hall);
 
 			new_client.start();// start to serve the client
-			
-			// inform the new client of its guest name
-			new_client.sendNextMessage(connect_new_id.toJSONString());
-			new_client.sendNextMessage(connect_new_name.toJSONString());
-			
+
+			new_client.sendNextMessage(connect_new_name.toJSONString(),true);
+
 		}
 	}
 
@@ -186,23 +202,22 @@ public class ChatServer
 		return ("guest" + index);
 
 	}
-	
+
 	public boolean roomIdExist(String room_id)
 	{
 		for (int i = 0; i < this.room_list.size(); i++)
 		{
-			if(this.room_list.get(i).getRoomId().equals(room_id))
-				return true;			
+			if (this.room_list.get(i).getRoomId().equals(room_id))
+				return true;
 		}
 		return false;
 	}
-	
 
 	public void releaseGuestIndex(int i)
 	{
 		this.guest_name_flag[i - 1] = false;
 	}
-	
+
 	public JSONObject getRoomListJson()
 	{
 		JSONObject response_json = new JSONObject();
@@ -218,29 +233,29 @@ public class ChatServer
 		response_json.put("rooms", rooms);
 
 		System.out.println(response_json);
-		
+
 		return response_json;
 	}
-	
+
 	public UserProfile getUserByIdentity(String identity)
 	{
 		for (int i = 0; i < user_list.size(); i++)
 		{
-			UserProfile tmpUser= user_list.get(i);
-			if(tmpUser.getUserIdentity().equals(identity))
+			UserProfile tmpUser = user_list.get(i);
+			if (tmpUser.getUserIdentity().equals(identity))
 			{
 				return tmpUser;
 			}
 		}
 		return null;
 	}
-	
+
 	public UserProfile getUserByNum(long user_num)
 	{
 		for (int i = 0; i < user_list.size(); i++)
 		{
-			UserProfile tmpUser= user_list.get(i);
-			if(tmpUser.getUserNum()==user_num)
+			UserProfile tmpUser = user_list.get(i);
+			if (tmpUser.getUserNum() == user_num)
 			{
 				return tmpUser;
 			}
@@ -248,22 +263,26 @@ public class ChatServer
 		return null;
 	}
 
+	public void bindUserProfileAndClient(UserProfile user,ClientWrap clientWrap)
+	{
+		this.user_list.add(user);
+		clientWrap.setUserProfile(user);
+	}
+	
+	
 	public static void main(String[] args)
 	{
-		int port=4444;
+		int port = 4444;
 		for (int i = 0; i < args.length; i++)
 		{
-			if(args[i].equals("-p"))
-				port=Integer.parseInt(args[i+1]);
+			if (args[i].equals("-p"))
+				port = Integer.parseInt(args[i + 1]);
 		}
-		
+
 		ChatServer chatServer = new ChatServer(port);
 		chatServer.startService();
 	}
 
-	public boolean identityExist(String identity)
-	{
-		return this.getUserByIdentity(identity)!=null;
-	}
+	
 
 }

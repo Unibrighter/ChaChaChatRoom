@@ -22,6 +22,16 @@ public class Config
 	public static final String VALID_IDENTITY_REX = "^[a-zA-Z][a-zA-Z0-9]{2,15}";
 	public static final String VALID_ROOM_ID_REX = "^[a-zA-Z][a-zA-Z0-9]{2,31}";
 
+	
+	//===============================================
+	//new custom TYPE
+	public static final String TYPE_RSA_VERIFY="rsaverify";
+	public static final String TYPE_SIGNATURE="signature";
+	public static final String TYPE_LOGIN="login";
+	public static final String TYPE_LOGIN_SUCCESS="success";
+	public static final String TYPE_LOGIN_FAILURE="failure";
+	
+	
 	public static  boolean validIdentity(String identity)
 	{
 		return Pattern.matches(Config.VALID_IDENTITY_REX, identity);

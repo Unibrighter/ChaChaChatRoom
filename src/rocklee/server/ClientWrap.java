@@ -9,6 +9,7 @@ import java.net.SocketException;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
+import javax.crypto.SecretKey;
 import javax.jws.soap.SOAPBinding.Use;
 
 import org.apache.log4j.Logger;
@@ -17,8 +18,11 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import rocklee.security.DESUtil;
+import rocklee.security.RSAUtil;
 import rocklee.utility.Config;
 import rocklee.utility.UserProfile;
+import sun.security.krb5.internal.crypto.RsaMd5CksumType;
 
 /**
  * This class is the wrap for the connection of a single client , and includes
@@ -38,12 +42,13 @@ public class ClientWrap extends Thread
 
 	private static JSONParser json_parser = new JSONParser();
 
+	private String DES_sessionKeyRoot = null;
 	private UserProfile user = null;
 
 	private ChatRoomManager chat_room_manager = null;
 	private ChatServer chat_server = null;
 
-	//socket and stream
+	// socket and stream
 	private Socket socket = null;
 	private BufferedReader input = null;
 	private PrintWriter output = null;
@@ -54,7 +59,7 @@ public class ClientWrap extends Thread
 	{
 		return this.online;
 	}
-	
+
 	public void setOnline(boolean online)
 	{
 		this.online = online;
@@ -63,7 +68,7 @@ public class ClientWrap extends Thread
 	public ClientWrap(Socket socket, UserProfile user)
 	{
 		this(socket);
-		this.user=user;
+		this.user = user;
 	}
 
 	public ClientWrap(Socket socket)
@@ -99,8 +104,20 @@ public class ClientWrap extends Thread
 
 	// if msg with the json string does not end with character '\n'
 	// then we need to attach '\n' to its end
-	public void sendNextMessage(String msg)
+	public void sendNextMessage(String msg, boolean DES_encrypt)
 	{
+		if (DES_encrypt)
+		{
+			try
+			{
+				msg = DESUtil.encrypt(msg, this.DES_sessionKeyRoot);
+			} catch (Exception e)
+			{
+
+				e.printStackTrace();
+			}
+		}
+			
 		this.output.println(msg);
 		this.output.flush();
 	}
@@ -128,12 +145,16 @@ public class ClientWrap extends Thread
 
 	}
 
+	public void setUserProfile(UserProfile user_profile)
+	{
+		this.user = user_profile;
+	}
+
 	// get the identity for the client at the Server side
 	public UserProfile getUserProfile()
 	{
 		return this.user;
 	}
-	
 
 	// set the new identity for the client at the Server side
 	public void switchIdentity(String identity)
@@ -173,6 +194,9 @@ public class ClientWrap extends Thread
 
 		this.chat_room_manager.addClient(this);
 
+		// change the room tag of the user
+		this.user.setCurrentRoomId(targetRoom.getRoomId());
+
 		// delete the client from the original chat room list
 		if (original_room != null)
 		{
@@ -185,15 +209,154 @@ public class ClientWrap extends Thread
 			return true;
 
 	}
-	
 
-	// if the two instances of ClientWrap have the same UserProfile 
+	// if the two instances of ClientWrap have the same UserProfile
 	// then we consider it's the same clientWrap
-	//this method is override for Vector<ClientWrap>.contain
+	// this method is override for Vector<ClientWrap>.contain
 	@Override
 	public boolean equals(Object obj)
 	{
-		return this.user.getUserNum()==((UserProfile)obj).getUserNum();
+		return this.user.getUserNum() == ((UserProfile) obj).getUserNum();
+	}
+
+	private void phaseOne()
+	{
+		log.warn("=====================1.>PHase I. to verify the server's identity.=====================");
+
+		String cipher_input = null;
+		try
+		{
+			cipher_input = this.input.readLine();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		JSONObject request_obj = this.string2Json(RSAUtil
+				.decryptUsingPrivateKey(this.chat_server.getRSAPrivateKey(),
+						cipher_input));
+		JSONObject response_obj = new JSONObject();
+
+		String type = (String) request_obj.get("type");
+		if (type.equals(Config.TYPE_RSA_VERIFY))
+		{// the client asked to check the server's identity
+
+			String content = (String) request_obj.get("content");
+			response_obj.put("type", Config.TYPE_SIGNATURE);
+			response_obj.put("content", RSAUtil.stringMD5(content));
+
+			String cipher_output = RSAUtil.encryptUsingPrivateKey(
+					this.chat_server.getRSAPrivateKey(),
+					response_obj.toJSONString());
+
+			this.sendNextMessage(cipher_output,false);
+		}
+
+		else
+		{// not the json we expect
+			this.disonnect();
+		}
+	}
+
+	private void phaseTwo()
+	{
+		log.warn("=====================2.>PHase II. to negotiate the session key.=====================");
+
+		String cipher_input = null;
+		try
+		{
+			cipher_input = this.input.readLine();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		JSONObject request_obj = this.string2Json(RSAUtil
+				.decryptUsingPrivateKey(this.chat_server.getRSAPrivateKey(),
+						cipher_input));
+		JSONObject response_obj = new JSONObject();
+
+		String type = (String) request_obj.get("type");
+
+		// now we shall deal with the confidential
+		if (type.equals(Config.TYPE_LOGIN))
+		{
+			String identity = (String) request_obj.get("identity");
+			String password_hash = (String) request_obj.get("password");
+
+			if (this.loginOrRegisterConfidential(identity, password_hash))
+			{// successfully logged in
+				response_obj.put("type", Config.TYPE_LOGIN_SUCCESS);
+				response_obj.put("identity", this.user.getUserIdentity());
+
+				// use the session key sent from the client
+				this.DES_sessionKeyRoot = (String) request_obj
+						.get("sessionkey");
+			}
+
+			else
+			{
+				response_obj.put("type", Config.TYPE_LOGIN_FAILURE);
+			}
+
+			String cipher_output = null;
+			try
+			{
+				cipher_output = DESUtil.encrypt(response_obj.toJSONString(),
+						this.DES_sessionKeyRoot);
+			} catch (Exception e)
+			{
+
+				e.printStackTrace();
+			}
+
+			this.sendNextMessage(cipher_output,false);
+		}
+	}
+
+	// This method starts even before the thread start
+	// We use it to initial the info for a secure communication
+	// and bind a socket with a new or an existing UserProfile
+	public void prepareSecureChannel()
+	{
+		this.phaseOne();
+		this.phaseTwo();
+	}
+
+	private boolean loginOrRegisterConfidential(String identity,
+			String password_MD5Hash)
+	{
+
+		UserProfile user = null;
+
+		// register
+		if (identity == null || identity.equals(""))
+		{// no identity is given ,we will assign it with a new guest id
+
+			user = new UserProfile(this.chat_server.registered_user_count++,
+					this.chat_server.getNextGuestName(), password_MD5Hash, "");
+
+		}
+
+		// login
+		else
+		{
+			user = this.chat_server.getUserByIdentity(identity);
+			user.setCurrentRoomId("");
+			if (user == null || user.isOnline())
+			{// if the user does not exist or is currently online
+				return false;
+			}
+		}
+
+		user.setOnline(true);
+		this.chat_server.bindUserProfileAndClient(user, this);
+
+		log.warn("A new Client has connected ! And logged in as : "
+				+ user.getUserIdentity() + " . client number is : "
+				+ user.getUserNum());
+
+		return true;
 	}
 
 	// the thread that deals with a single client Connection
@@ -202,21 +365,22 @@ public class ClientWrap extends Thread
 	{
 		// get the input from the input stream
 		String input_from_client = null;
-
+		String plaintext_msg=null;
 		try
 		{
 			while (online)
 			{// block and will wait for the input from client
 
-				//TODO here it would be processed to get plain text by security module first
-				if ((input_from_client = input.readLine()) != null)
+				input_from_client = input.readLine();
+				plaintext_msg=DESUtil.decrypt(input_from_client, this.DES_sessionKeyRoot);
+				
+				if (input_from_client != null)
 				{
-					// see what the client message says and act accordingly
-					JSONObject msg_json = null;
-					log.warn(this.user.getUserIdentity() + ">>>>>" + input_from_client);
 
-					this.handleRequest(input_from_client);
+					log.warn(this.user.getUserIdentity() + ">>>>>"
+							+ plaintext_msg);
 
+					this.handleRequest(plaintext_msg);
 				}
 
 			}
@@ -229,14 +393,14 @@ public class ClientWrap extends Thread
 
 		}
 
-		catch (IOException e)
+		catch (Exception e)
 		{
 			e.printStackTrace();
 		}
 
 	}
 
-	private void handleRequest(String raw_input)
+	private JSONObject string2Json(String raw_input)
 	{
 		JSONObject msg_json = null;
 		try
@@ -247,6 +411,12 @@ public class ClientWrap extends Thread
 
 			e.printStackTrace();
 		}
+		return msg_json;
+	}
+
+	private void handleRequest(String raw_input)
+	{
+		JSONObject msg_json = string2Json(raw_input);
 		String request_type = (String) msg_json.get("type");
 
 		switch (request_type)
@@ -300,13 +470,13 @@ public class ClientWrap extends Thread
 		response_json.put("former", former_id);
 
 		if (!Config.validIdentity(msg_identity)
-				|| chat_server.identityExist(msg_identity))
+				|| chat_server.getUserByIdentity(msg_identity) != null)
 		{// request identity invalid or has been occupied already
 
 			response_json.put("identity", former_id);
 
 			// only the client with the failed request will get response
-			this.sendNextMessage(response_json.toJSONString());
+			this.sendNextMessage(response_json.toJSONString(),true);
 			return false;
 
 		} else
@@ -359,7 +529,7 @@ public class ClientWrap extends Thread
 				response_json.put("roomid", former);
 
 				// only the client with the failed request will get response
-				this.sendNextMessage(response_json.toJSONString());
+				this.sendNextMessage(response_json.toJSONString(),true);
 
 				return false;
 			}
@@ -392,7 +562,7 @@ public class ClientWrap extends Thread
 			response_json.put("roomid", room_id);
 			response_json.put("owner", this.chat_room_manager.getRoomOwner());
 
-			this.sendNextMessage(response_json.toJSONString());
+			this.sendNextMessage(response_json.toJSONString(),true);
 			return true;
 		}
 	}
@@ -404,7 +574,7 @@ public class ClientWrap extends Thread
 
 		response_json.put("type", Config.TYPE_ROOM_LIST);
 
-		this.sendNextMessage(response_json.toJSONString());
+		this.sendNextMessage(response_json.toJSONString(),true);
 
 		return true;
 	}
@@ -425,7 +595,7 @@ public class ClientWrap extends Thread
 		{// successful created a new room
 			this.chat_server.addChatRoom(room_id, this.user);
 			response_json = this.chat_server.getRoomListJson();
-			this.sendNextMessage(response_json.toJSONString());
+			this.sendNextMessage(response_json.toJSONString(),true);
 			return true;
 		}
 	}
@@ -440,21 +610,26 @@ public class ClientWrap extends Thread
 		if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
 			return false;
 
-		// the user who sends the command has the owner's number, it's the right person
-		if (this.user.getUserNum()==(target_room.getRoomOwner().getUserNum()))
+		// the user who sends the command has the owner's number, it's the right
+		// person
+		if (this.user.getUserNum() == (target_room.getRoomOwner().getUserNum()))
 		{
 			Long time = (Long) msg_json.get("time");
 			String msg_identity = (String) msg_json.get("identity");
 
 			// get the client who is going to be kicked
-			UserProfile user_to_be_kicked= this.chat_server.getUserByIdentity(msg_identity);
-			
-			//this user does not exist or not in the right room
-			if (user_to_be_kicked == null||!user_to_be_kicked.getCurrentRoomId().equals(target_room))
+			UserProfile user_to_be_kicked = this.chat_server
+					.getUserByIdentity(msg_identity);
+
+			// this user does not exist or not in the right room
+			if (user_to_be_kicked == null
+					|| !user_to_be_kicked.getCurrentRoomId()
+							.equals(target_room))
 				return false;
 
 			long deadline = System.currentTimeMillis() + time;
-			this.chat_room_manager.banUserByNum(user_to_be_kicked.getUserNum(), deadline);
+			this.chat_room_manager.banUserByNum(user_to_be_kicked.getUserNum(),
+					deadline);
 
 			// inform everyone of the change
 			response_json.put("type", Config.TYPE_ROOM_CHANGE);
@@ -466,7 +641,8 @@ public class ClientWrap extends Thread
 					.toJSONString());
 
 			// chatroom switch
-			ClientWrap clientWarp=this.chat_room_manager.getClientWrapByUserProfile(user_to_be_kicked);
+			ClientWrap clientWarp = this.chat_room_manager
+					.getClientWrapByUserProfile(user_to_be_kicked);
 			clientWarp.switchChatRoom(chat_server.main_hall);
 
 			return true;
@@ -486,7 +662,7 @@ public class ClientWrap extends Thread
 		if ((target_room = this.chat_server.getChatRoomById(room_id)) == null)
 			return false;
 
-		if (this.user.getUserNum()==(target_room.getRoomOwner().getUserNum()))
+		if (this.user.getUserNum() == (target_room.getRoomOwner().getUserNum()))
 		{
 			Vector<ClientWrap> people_inside = target_room.getAllClients();
 
@@ -527,6 +703,12 @@ public class ClientWrap extends Thread
 
 		this.chat_room_manager.broadCastMessage(response_json.toJSONString());
 
+		//since the profile will be left at the user_list at chat_server
+		//what we have to do is change its status
+		UserProfile profile=this.chat_server.getUserByNum(this.user.getUserNum());
+		//change the status
+		profile.setOnline(false);
+		
 		this.disonnect();
 		return true;
 	}
