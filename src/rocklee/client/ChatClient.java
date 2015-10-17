@@ -234,6 +234,7 @@ public class ChatClient
 			System.exit(-3);
 		} else
 		{
+			log.warn("login in successfully!");
 			chat_client.startChat();
 		}
 

@@ -111,10 +111,10 @@ public class ChatServer
 			//before the login stage , temporary socket
 			ClientWrap new_client = new ClientWrap(socket);
 
-			new_client.prepareSecureChannel();
-		
 			//set the dummy
 			new_client.setChatSever(this);
+			
+			new_client.prepareSecureChannel();
 
 			// indicates it comes from nowhere
 			new_client.setChatRoom(null);

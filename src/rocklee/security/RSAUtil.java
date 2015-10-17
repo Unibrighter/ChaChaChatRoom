@@ -1,5 +1,6 @@
 package rocklee.security;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -21,6 +22,9 @@ public class RSAUtil
 {
 	private static Decoder decoder = Base64.getDecoder();
 	private static Encoder encoder = Base64.getEncoder();
+	
+    private static final int MAX_ENCRYPT_BLOCK = 117;  
+    private static final int MAX_DECRYPT_BLOCK = 128;  
 
 	public static KeyPair generateRSAKeyPair(String filePath)
 	{
@@ -98,8 +102,30 @@ public class RSAUtil
 				// 根据公钥，对Cipher对象进行初始化
 				cipher.init(Cipher.ENCRYPT_MODE, publicKey);
 				// 加密，结果保存进resultBytes
-				byte[] resultBytes = cipher.doFinal(data.getBytes());
-				return encoder.encodeToString(resultBytes);
+				
+				byte[] input_data= data.getBytes();
+				//待处理数据的长度
+				int inputLen = input_data.length;
+				//缓冲流,作为暂存的buffer
+		        ByteArrayOutputStream out = new ByteArrayOutputStream();  
+		        //游标,指示已经加密/解密到哪个位置
+		        int offSet = 0;
+		        byte[] cache;  
+		        int i = 0;  
+		        // 对数据分段解密  
+		        while (inputLen - offSet > 0) {  
+		            if (inputLen - offSet > MAX_DECRYPT_BLOCK) {  
+		                cache = cipher.doFinal(input_data, offSet, MAX_ENCRYPT_BLOCK);  
+		            } else {  
+		                cache = cipher.doFinal(input_data, offSet, inputLen - offSet);  
+		            }  
+		            out.write(cache, 0, cache.length);  
+		            i++;  
+		            offSet = i * MAX_ENCRYPT_BLOCK;  
+		        }  
+		        byte[] decryptedData = out.toByteArray();  
+		        out.close();  
+				return encoder.encodeToString(decryptedData);
 			} catch (Exception e)
 			{
 				e.printStackTrace();
@@ -118,9 +144,30 @@ public class RSAUtil
 				Cipher cipher = Cipher.getInstance("RSA");
 				// 根据私钥，对Cipher对象进行初始化
 				cipher.init(Cipher.DECRYPT_MODE, privateKey);
-				// 解密，结果保存进resultBytes
-				byte[] decBytes = cipher.doFinal(decoder.decode(data));
-				return new String(decBytes);
+
+				byte[] input_data= decoder.decode(data);
+				//待处理数据的长度
+				int inputLen = input_data.length;
+				//缓冲流,作为暂存的buffer
+		        ByteArrayOutputStream out = new ByteArrayOutputStream();  
+		        //游标,指示已经加密/解密到哪个位置
+		        int offSet = 0;
+		        byte[] cache;  
+		        int i = 0;  
+		        // 对数据分段解密  
+		        while (inputLen - offSet > 0) {  
+		            if (inputLen - offSet > MAX_DECRYPT_BLOCK) {  
+		                cache = cipher.doFinal(input_data, offSet, MAX_DECRYPT_BLOCK);  
+		            } else {  
+		                cache = cipher.doFinal(input_data, offSet, inputLen - offSet);  
+		            }  
+		            out.write(cache, 0, cache.length);  
+		            i++;  
+		            offSet = i * MAX_DECRYPT_BLOCK;  
+		        }  
+		        byte[] decryptedData = out.toByteArray();  
+		        out.close();  
+				return new String(decryptedData);
 			} catch (Exception e)
 			{
 				e.printStackTrace();
@@ -141,8 +188,31 @@ public class RSAUtil
 				// 根据公钥，对Cipher对象进行初始化
 				cipher.init(Cipher.ENCRYPT_MODE, privateKey);
 				// 加密，结果保存进resultBytes
-				byte[] resultBytes = cipher.doFinal(data.getBytes());
-				return encoder.encodeToString(resultBytes);
+				
+
+				byte[] input_data= data.getBytes();
+				//待处理数据的长度
+				int inputLen = input_data.length;
+				//缓冲流,作为暂存的buffer
+		        ByteArrayOutputStream out = new ByteArrayOutputStream();  
+		        //游标,指示已经加密/解密到哪个位置
+		        int offSet = 0;
+		        byte[] cache;  
+		        int i = 0;  
+		        // 对数据分段解密  
+		        while (inputLen - offSet > 0) {  
+		            if (inputLen - offSet > MAX_DECRYPT_BLOCK) {  
+		                cache = cipher.doFinal(input_data, offSet, MAX_ENCRYPT_BLOCK);  
+		            } else {  
+		                cache = cipher.doFinal(input_data, offSet, inputLen - offSet);  
+		            }  
+		            out.write(cache, 0, cache.length);  
+		            i++;  
+		            offSet = i * MAX_ENCRYPT_BLOCK;  
+		        }  
+		        byte[] decryptedData = out.toByteArray();  
+		        out.close();  
+				return encoder.encodeToString(decryptedData);
 			} catch (Exception e)
 			{
 				e.printStackTrace();
@@ -161,9 +231,30 @@ public class RSAUtil
 				Cipher cipher = Cipher.getInstance("RSA");
 				// 根据私钥，对Cipher对象进行初始化
 				cipher.init(Cipher.DECRYPT_MODE, publicKey);
-				// 解密，结果保存进resultBytes
-				byte[] decBytes = cipher.doFinal(decoder.decode(data));
-				return new String(decBytes);
+
+				byte[] input_data= decoder.decode(data);
+				//待处理数据的长度
+				int inputLen = input_data.length;
+				//缓冲流,作为暂存的buffer
+		        ByteArrayOutputStream out = new ByteArrayOutputStream();  
+		        //游标,指示已经加密/解密到哪个位置
+		        int offSet = 0;
+		        byte[] cache;  
+		        int i = 0;  
+		        // 对数据分段解密  
+		        while (inputLen - offSet > 0) {  
+		            if (inputLen - offSet > MAX_DECRYPT_BLOCK) {  
+		                cache = cipher.doFinal(input_data, offSet, MAX_DECRYPT_BLOCK);  
+		            } else {  
+		                cache = cipher.doFinal(input_data, offSet, inputLen - offSet);  
+		            }  
+		            out.write(cache, 0, cache.length);  
+		            i++;  
+		            offSet = i * MAX_DECRYPT_BLOCK;  
+		        }  
+		        byte[] decryptedData = out.toByteArray();  
+		        out.close();  
+				return new String(decryptedData);
 			} catch (Exception e)
 			{
 				e.printStackTrace();
@@ -238,8 +329,9 @@ public class RSAUtil
 	{
 		try
 		{
-			String msg = "郭克华_安全编程技术";
-			System.out.println("明文是:" + msg);
+			String msg = "what do you have in mind?";
+			msg+=" Toooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo Long to get a proper output?!?!?!?";
+			System.out.println("Plain Text :\t" + msg);
 			// KeyPairGenerator 类用于生成公钥和私钥对，基于RSA算法生成对象
 			KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
 			// 初始化密钥对生成器,密钥大小为1024位
@@ -253,11 +345,11 @@ public class RSAUtil
 			// 用公钥加密
 			String result = RSAUtil.encryptUsingPublicKey(publicKey, msg);
 
-			System.out.println("用公钥加密后密文是:" + result);
+			System.out.println("Cipher Text :\t" + result);
 
 			// 用私钥解密
 			String dec = RSAUtil.decryptUsingPrivateKey(privateKey, result);
-			System.out.println("用私钥解密后结果是:" + dec);
+			System.out.println("After Decryption:\t" + dec);
 		} catch (Exception e)
 		{
 			e.printStackTrace();

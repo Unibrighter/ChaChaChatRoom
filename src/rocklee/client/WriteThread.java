@@ -91,11 +91,16 @@ public class WriteThread extends Thread
 		rsa_verify_json.put("type", Config.TYPE_RSA_VERIFY);
 		rsa_verify_json.put("content", time_stamp);
 
+		log.debug("Plain Text json is :\t"+rsa_verify_json.toJSONString());
+		
+		
 		// encrypt the message
 		String json_encrypt = RSAUtil.encryptUsingPublicKey(
 				this.chat_client.getRSAPublicKey(),
 				rsa_verify_json.toJSONString());
 
+		log.debug("Cipher Text String is:\t"+json_encrypt);
+		
 		this.sendNextMessage(json_encrypt);
 
 		return RSAUtil.stringMD5(time_stamp);
@@ -116,10 +121,18 @@ public class WriteThread extends Thread
 				RSAUtil.stringMD5(this.chat_client.getPassword()));
 		login_json.put("sessionkey", session_key_root);
 
-		String cipher_output = RSAUtil.decryptUsingPublicKey(
-				this.chat_client.getRSAPublicKey(), login_json.toJSONString());
+		log.debug("Plain Text json is :\t"+login_json.toJSONString());
+		
+		
+		// encrypt the message
+		String json_encrypt = RSAUtil.encryptUsingPublicKey(
+				this.chat_client.getRSAPublicKey(),
+				login_json.toJSONString());
 
-		this.sendNextMessage(cipher_output);
+		log.debug("Cipher Text String is:\t"+json_encrypt);
+		
+
+		this.sendNextMessage(json_encrypt);
 	}
 
 	private void handInput(String raw_input)

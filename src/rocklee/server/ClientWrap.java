@@ -232,9 +232,15 @@ public class ClientWrap extends Thread
 			e.printStackTrace();
 		}
 
-		JSONObject request_obj = this.string2Json(RSAUtil
+		log.debug("The cipher message from client is this :\t"+cipher_input);
+		
+		String plain_text=RSAUtil
 				.decryptUsingPrivateKey(this.chat_server.getRSAPrivateKey(),
-						cipher_input));
+						cipher_input);
+		log.debug("After decryption, the plain text is :\t"+plain_text);
+		
+		
+		JSONObject request_obj = this.string2Json(plain_text);
 		JSONObject response_obj = new JSONObject();
 
 		String type = (String) request_obj.get("type");
@@ -271,9 +277,14 @@ public class ClientWrap extends Thread
 			e.printStackTrace();
 		}
 
-		JSONObject request_obj = this.string2Json(RSAUtil
+		log.debug("The cipher message from client is this :\t"+cipher_input);
+		
+		String plain_text=RSAUtil
 				.decryptUsingPrivateKey(this.chat_server.getRSAPrivateKey(),
-						cipher_input));
+						cipher_input);
+		log.debug("After decryption, the plain text is :\t"+plain_text);
+		
+		JSONObject request_obj = this.string2Json(plain_text);
 		JSONObject response_obj = new JSONObject();
 
 		String type = (String) request_obj.get("type");
@@ -302,8 +313,12 @@ public class ClientWrap extends Thread
 			String cipher_output = null;
 			try
 			{
-				cipher_output = DESUtil.encrypt(response_obj.toJSONString(),
-						this.DES_sessionKeyRoot);
+
+				plain_text=response_obj.toJSONString();
+								log.debug("DES response json plain text :\t"+plain_text);
+				
+				cipher_output = DESUtil.encrypt(plain_text, this.DES_sessionKeyRoot);
+				log.debug("DES response json cipher text :\t"+cipher_output);
 			} catch (Exception e)
 			{
 

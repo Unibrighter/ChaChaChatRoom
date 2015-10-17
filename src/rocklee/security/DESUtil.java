@@ -13,14 +13,15 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
+import javax.crypto.spec.DESedeKeySpec;
 
 
 
 public class DESUtil {
 
-    public static final String KEY_ALGORITHM = "DES";
+    public static final String KEY_ALGORITHM = "DESede";
 
-    public static final String CIPHER_ALGORITHM = "DES/ECB/NoPadding";
+    public static final String CIPHER_ALGORITHM = "DESede/ECB/PKCS5Padding";
     
     public static final String CHAR_SET="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     
@@ -51,9 +52,9 @@ public class DESUtil {
      */
     private static SecretKey keyGenerator(String keyStr) throws Exception {
         byte input[] = HexString2Bytes(keyStr);
-        DESKeySpec desKey = new DESKeySpec(input);
+        DESedeKeySpec desKey = new DESedeKeySpec(input);
         //创建一个密匙工厂，然后用它把DESKeySpec转换成
-        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
+        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(KEY_ALGORITHM);
         SecretKey securekey = keyFactory.generateSecret(desKey);
         return securekey;
     }
@@ -113,10 +114,12 @@ public class DESUtil {
     }
 
     public static void main(String[] args) throws Exception {
-        String source = "amigoxie";
-        System.out.println("原文: " + source);
-        String key = "A1B2C3D4E5F60708";
-        String encryptData = encrypt(source, key);
+    	String msg = "what do you have in mind?";
+		msg+=" Tooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo Long to get a proper output?!?!?!?";
+		
+        System.out.println("原文: " + msg);
+        String key = "A1B2C3D4E5F60708A1B2C3D4E5F60708A1B2C3D4E5F60708A1B2C3D4E5F60708";
+        String encryptData = encrypt(msg, key);
         System.out.println("加密后: " + encryptData);
         String decryptData = decrypt(encryptData, key);
         System.out.println("解密后: " + decryptData);
