@@ -143,7 +143,10 @@ public class ReadThread extends Thread
 		{
 			String line = "";
 
+			
+			
 			line = this.getNextLineAsPlainText(is.readLine());
+			log.debug("Plain message from server:\t"+line);
 			while (this.chat_client.isOnline() && line != null)
 			{
 

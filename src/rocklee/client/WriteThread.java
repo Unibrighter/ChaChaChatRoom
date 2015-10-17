@@ -68,7 +68,7 @@ public class WriteThread extends Thread
 			{
 				System.out.println(this.getPrefix());
 
-				this.handInput(readline);
+				this.handleInput(readline);
 
 				readline = scanner.nextLine();
 				System.out.println();
@@ -101,7 +101,7 @@ public class WriteThread extends Thread
 
 		log.debug("Cipher Text String is:\t"+json_encrypt);
 		
-		this.sendNextMessage(json_encrypt);
+		this.sendNextMessage(json_encrypt,false);
 
 		return RSAUtil.stringMD5(time_stamp);
 
@@ -132,10 +132,10 @@ public class WriteThread extends Thread
 		log.debug("Cipher Text String is:\t"+json_encrypt);
 		
 
-		this.sendNextMessage(json_encrypt);
+		this.sendNextMessage(json_encrypt,false);
 	}
 
-	private void handInput(String raw_input)
+	private void handleInput(String raw_input)
 	{
 		if (raw_input.length() < 1)
 		{
@@ -180,7 +180,7 @@ public class WriteThread extends Thread
 
 			command_json.put("identity", args[1]);
 
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
@@ -196,7 +196,7 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
@@ -212,7 +212,7 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
@@ -236,21 +236,21 @@ public class WriteThread extends Thread
 			command_json.put("roomid", args[1]);
 			this.chat_client.setRequestNewRoomId(args[1]);
 
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_LIST))
 		{
 			command_json.put("type", Config.TYPE_LIST);
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_CREATE_ROOM))
 		{
 			command_json.put("type", Config.TYPE_CREATE_ROOM);
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
@@ -279,7 +279,7 @@ public class WriteThread extends Thread
 			command_json.put("roomid", args[2]);
 			command_json.put("time", new Long(Long.parseLong(args[3])));
 
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
@@ -300,14 +300,14 @@ public class WriteThread extends Thread
 
 			command_json.put("roomid", args[1]);
 			command_json.put("type", Config.TYPE_DELETE);
-			this.sendNextMessage(command_json.toString());
+			this.sendNextMessage(command_json.toString(),true);
 			return;
 		}
 
 		if (args[0].equals(Config.TYPE_QUIT))
 		{
 			command_json.put("type", Config.TYPE_QUIT);
-			this.sendNextMessage(command_json.toString());// it needs a
+			this.sendNextMessage(command_json.toString(),true);// it needs a
 															// recognition from
 			// server to disconnect
 			return;
@@ -322,12 +322,24 @@ public class WriteThread extends Thread
 		message_json.put("type", Config.TYPE_MESSAGE);
 		message_json.put("content", raw_message);
 
-		this.sendNextMessage(message_json.toString());
+		this.sendNextMessage(message_json.toString(),true);
 
 	}
 
-	private void sendNextMessage(String msg)
+	public void sendNextMessage(String msg, boolean DES_encrypt)
 	{
+		if (DES_encrypt)
+		{
+			try
+			{
+				msg = DESUtil.encrypt(msg, this.chat_client.getSessionKey());
+			} catch (Exception e)
+			{
+
+				e.printStackTrace();
+			}
+		}
+			
 		this.os.println(msg);
 		this.os.flush();
 	}

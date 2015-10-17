@@ -90,9 +90,9 @@ public class DESUtil {
         // 初始化Cipher对象，设置为加密模式
         cipher.init(Cipher.ENCRYPT_MODE, deskey, random);
         byte[] results = cipher.doFinal(data.getBytes());
-        for (int i = 0; i < results.length; i++) {
-            System.out.print(results[i] + " ");
-        }
+//        for (int i = 0; i < results.length; i++) {
+//            System.out.print(results[i] + " ");
+//        }
         System.out.println();
         // 执行加密操作。加密后的结果通常都会用Base64编码进行传输 
         return Base64.getEncoder().encodeToString(results);
