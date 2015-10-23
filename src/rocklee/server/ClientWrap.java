@@ -216,7 +216,7 @@ public class ClientWrap extends Thread
 	@Override
 	public boolean equals(Object obj)
 	{
-		return this.user.getUserNum() == ((UserProfile) obj).getUserNum();
+		return this.user.getUserNum() == ((ClientWrap) obj).getUserProfile().getUserNum();
 	}
 
 	private void phaseOne()

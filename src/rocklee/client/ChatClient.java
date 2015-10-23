@@ -168,7 +168,12 @@ public class ChatClient
 		this.DES_sessionKeyRoot = DES_sessionKey;
 	}
 
-	
+	public String getPrefix()
+	{
+		String prefix = "[" + this.getRoomId() + "] "
+				+ this.getIdentity() + ">";
+		return prefix;
+	}
 
 	public static void main(String[] args)
 	{

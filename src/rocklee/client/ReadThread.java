@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.net.SocketException;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
@@ -14,7 +15,7 @@ import org.json.simple.parser.ParseException;
 import rocklee.security.DESUtil;
 import rocklee.security.RSAUtil;
 import rocklee.utility.Config;
-
+ 
 /**
  * This thread get the input from the socket, analyze it , and then gives proper
  * responses, like printing some info to the Standard output for example.
@@ -151,12 +152,23 @@ public class ReadThread extends Thread
 			{
 
 				this.handleResponse(line);
-				line = this.getNextLineAsPlainText(is.readLine());
+				String cipher_text=is.readLine();
+				System.out.println("is readline!"+cipher_text);
+				line = this.getNextLineAsPlainText(cipher_text);
 			}
 
 			is.close();
 			socket.close();
-		} catch (Exception e)
+		}
+		catch (NullPointerException e)
+		{
+			log.debug("The client disconnect itself from the server!");
+		}
+		catch (SocketException e)
+		{
+			log.debug("The client disconnect itself from the server!");
+		}
+		catch (Exception e)
 		{
 			e.printStackTrace();
 		}

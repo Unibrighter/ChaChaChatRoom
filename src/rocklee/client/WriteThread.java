@@ -49,29 +49,21 @@ public class WriteThread extends Thread
 
 	}
 
-	public String getPrefix()
-	{
-		String prefix = "[" + this.chat_client.getRoomId() + "] "
-				+ this.chat_client.getIdentity() + ">";
-		return prefix;
-	}
+
 
 	public void run()
 	{
 		try
 		{
-			this.sleep(2000);
+			this.sleep(500);
 
+			System.out.print(this.chat_client.getPrefix());
 			String readline = scanner.nextLine();
-			System.out.println();
 			while (this.chat_client.isOnline() && readline != null)
 			{
-				System.out.println(this.getPrefix());
-
+				
 				this.handleInput(readline);
-
 				readline = scanner.nextLine();
-				System.out.println();
 			}
 			os.close();
 			socket.close();
@@ -152,6 +144,7 @@ public class WriteThread extends Thread
 		{
 			this.handleMessage(raw_input);
 		}
+		System.out.println(this.chat_client.getPrefix());
 	}
 
 	private void handleCommand(String raw_command)
@@ -323,7 +316,6 @@ public class WriteThread extends Thread
 		message_json.put("content", raw_message);
 
 		this.sendNextMessage(message_json.toString(),true);
-
 	}
 
 	public void sendNextMessage(String msg, boolean DES_encrypt)
